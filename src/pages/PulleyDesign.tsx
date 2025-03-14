@@ -10,25 +10,35 @@ import { jsPDF } from "jspdf";
 
 // Define the pulley parameters type
 interface PulleyParameters {
-  diameter: number;
-  thickness: number;
-  boreDiameter: number;
-  grooveDepth: number;
-  grooveWidth: number;
+  outsideDiameter: number;
+  insideDiameter: number;
+  overpinDiameter: number;
+  materialThickness: number;
+  width: number;
+  pinDiameter: number;
+  throughBore: number;
+  frontsideOffset: number;
+  stickout: number;
   keyWayWidth: number;
   keyWayDepth: number;
+  grooveAngle: number;
   unit: "mm" | "cm" | "m" | "in";
 }
 
 // Default pulley parameters
 const DEFAULT_PARAMETERS: PulleyParameters = {
-  diameter: 100,
-  thickness: 20,
-  boreDiameter: 25,
-  grooveDepth: 5,
-  grooveWidth: 10,
+  outsideDiameter: 100,
+  insideDiameter: 60,
+  overpinDiameter: 120,
+  materialThickness: 10,
+  width: 30,
+  pinDiameter: 8,
+  throughBore: 25,
+  frontsideOffset: 5,
+  stickout: 12,
   keyWayWidth: 6,
   keyWayDepth: 3,
+  grooveAngle: 40,
   unit: "mm",
 };
 
@@ -51,12 +61,12 @@ const PulleyDrawingArea: React.FC<{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Set canvas dimensions
-    const canvasSize = 400;
+    const canvasSize = 500;
     canvas.width = canvasSize;
     canvas.height = canvasSize;
     
     // Calculate scale to fit drawing in canvas
-    const maxDimension = Math.max(parameters.diameter, parameters.thickness) * 1.5;
+    const maxDimension = Math.max(parameters.outsideDiameter, parameters.overpinDiameter) * 1.2;
     const scale = (canvasSize * 0.8) / maxDimension;
     
     // Center point of canvas
@@ -78,35 +88,55 @@ const PulleyDrawingArea: React.FC<{
     centerY: number,
     scale: number
   ) => {
-    const { diameter, boreDiameter, keyWayWidth, keyWayDepth } = parameters;
+    const { outsideDiameter, insideDiameter, throughBore, keyWayWidth, keyWayDepth } = parameters;
     
-    // Draw outer circle
+    // Draw outer circle (outside diameter)
     ctx.beginPath();
-    ctx.arc(centerX, centerY, (diameter / 2) * scale, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, (outsideDiameter / 2) * scale, 0, Math.PI * 2);
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 2;
     ctx.stroke();
     
-    // Draw bore circle
+    // Draw inner circle (inside diameter)
     ctx.beginPath();
-    ctx.arc(centerX, centerY, (boreDiameter / 2) * scale, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, (insideDiameter / 2) * scale, 0, Math.PI * 2);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    
+    // Draw throughbore circle
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, (throughBore / 2) * scale, 0, Math.PI * 2);
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 2;
     ctx.stroke();
     
-    // Draw keyway
-    const keyWayPositionX = centerX - (keyWayWidth / 2) * scale;
-    const keyWayPositionY = centerY - (boreDiameter / 2) * scale;
-    const keyWayHeight = (boreDiameter / 2 + keyWayDepth) * scale;
-    
+    // Draw keyway as a dotted line extension - not a full rectangle
+    // This matches the reference image where the keyway is shown as a reference line
     ctx.beginPath();
-    ctx.rect(keyWayPositionX, centerY - keyWayHeight, keyWayWidth * scale, keyWayHeight);
+    ctx.setLineDash([5, 3]);
+    ctx.moveTo(centerX - (throughBore / 2) * scale, centerY);
+    ctx.lineTo(centerX - (throughBore / 2) * scale - (keyWayDepth) * scale, centerY);
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.stroke();
+    
+    // Draw keyway width line
+    ctx.beginPath();
+    ctx.moveTo(centerX - (throughBore / 2) * scale - (keyWayDepth / 2) * scale, centerY - (keyWayWidth / 2) * scale);
+    ctx.lineTo(centerX - (throughBore / 2) * scale - (keyWayDepth / 2) * scale, centerY + (keyWayWidth / 2) * scale);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Reset dash
+    ctx.setLineDash([]);
     
     // Draw dimension lines
     drawDimensionLines(ctx, centerX, centerY, scale, "top");
+    
+    // Draw labels
+    drawLabels(ctx, centerX, centerY, scale, "top");
   };
   
   // Draw side view
@@ -116,69 +146,181 @@ const PulleyDrawingArea: React.FC<{
     centerY: number,
     scale: number
   ) => {
-    const { diameter, thickness, boreDiameter, grooveDepth, grooveWidth } = parameters;
+    const { 
+      outsideDiameter, 
+      insideDiameter, 
+      overpinDiameter,
+      materialThickness,
+      width, 
+      pinDiameter, 
+      throughBore, 
+      frontsideOffset,
+      stickout,
+      grooveAngle 
+    } = parameters;
     
     // Calculate dimensions
-    const pulleyRadius = (diameter / 2) * scale;
-    const pulleyThickness = thickness * scale;
-    const boreRadius = (boreDiameter / 2) * scale;
+    const halfWidth = width / 2 * scale;
+    const halfOD = outsideDiameter / 2 * scale;
+    const halfID = insideDiameter / 2 * scale;
+    const halfThroughBore = throughBore / 2 * scale;
+    const halfOverpin = overpinDiameter / 2 * scale;
+    const halfPinDiameter = pinDiameter / 2 * scale;
+    const materialThicknessScaled = materialThickness * scale;
+    const frontsideOffsetScaled = frontsideOffset * scale;
+    const stickoutScaled = stickout * scale;
+    
+    // Draw side view outline
+    
+    // Main body rectangle
+    ctx.beginPath();
+    ctx.rect(centerX - halfWidth, centerY - halfOD, width * scale, outsideDiameter * scale);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw through bore
+    ctx.beginPath();
+    ctx.rect(centerX - halfWidth, centerY - halfThroughBore, width * scale, throughBore * scale);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    
+    // Draw groove at the top
+    const grooveAngleRad = (grooveAngle * Math.PI) / 180;
+    const grooveDepth = (overpinDiameter - outsideDiameter) / 2;
     const grooveDepthScaled = grooveDepth * scale;
-    const grooveWidthScaled = grooveWidth * scale;
     
-    // Calculate positions
-    const topY = centerY - pulleyThickness / 2;
-    const bottomY = centerY + pulleyThickness / 2;
-    const leftX = centerX - pulleyRadius;
-    const rightX = centerX + pulleyRadius;
-    
-    // Draw main body (outer rectangle)
+    // Top groove
     ctx.beginPath();
-    ctx.rect(leftX, topY, pulleyRadius * 2, pulleyThickness);
+    ctx.moveTo(centerX - halfWidth, centerY - halfOD);
+    ctx.lineTo(centerX - halfWidth - grooveDepthScaled, centerY - halfOD - grooveDepthScaled * Math.tan(grooveAngleRad / 2));
+    ctx.lineTo(centerX - halfWidth - grooveDepthScaled, centerY - halfOD + pinDiameter * scale);
+    ctx.lineTo(centerX - halfWidth, centerY - halfOD + pinDiameter * scale);
+    ctx.closePath();
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // Draw bore (inner rectangle)
+    // Fill with gradient
+    const gradient = ctx.createLinearGradient(
+      centerX - halfWidth - grooveDepthScaled, 
+      centerY - halfOD, 
+      centerX - halfWidth, 
+      centerY - halfOD
+    );
+    gradient.addColorStop(0, "#888");
+    gradient.addColorStop(1, "#ccc");
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    // Draw pin at the top
     ctx.beginPath();
-    ctx.rect(centerX - boreRadius, topY, boreRadius * 2, pulleyThickness);
+    ctx.arc(
+      centerX - halfWidth - grooveDepthScaled / 2, 
+      centerY - halfOD + halfPinDiameter, 
+      halfPinDiameter, 
+      0, 
+      Math.PI * 2
+    );
+    ctx.fillStyle = "#ddd";
+    ctx.fill();
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.stroke();
     
-    // Draw V-groove
-    const grooveTop = centerY - grooveWidthScaled / 2;
-    const grooveBottom = centerY + grooveWidthScaled / 2;
-    
-    // Left side of V-groove
+    // Bottom groove
     ctx.beginPath();
-    ctx.moveTo(leftX, grooveTop);
-    ctx.lineTo(leftX - grooveDepthScaled, centerY);
-    ctx.lineTo(leftX, grooveBottom);
+    ctx.moveTo(centerX - halfWidth, centerY + halfOD);
+    ctx.lineTo(centerX - halfWidth - grooveDepthScaled, centerY + halfOD + grooveDepthScaled * Math.tan(grooveAngleRad / 2));
+    ctx.lineTo(centerX - halfWidth - grooveDepthScaled, centerY + halfOD - pinDiameter * scale);
+    ctx.lineTo(centerX - halfWidth, centerY + halfOD - pinDiameter * scale);
+    ctx.closePath();
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // Right side of V-groove
+    // Fill with gradient
+    const gradient2 = ctx.createLinearGradient(
+      centerX - halfWidth - grooveDepthScaled, 
+      centerY + halfOD, 
+      centerX - halfWidth, 
+      centerY + halfOD
+    );
+    gradient2.addColorStop(0, "#888");
+    gradient2.addColorStop(1, "#ccc");
+    ctx.fillStyle = gradient2;
+    ctx.fill();
+    
+    // Draw pin at the bottom
     ctx.beginPath();
-    ctx.moveTo(rightX, grooveTop);
-    ctx.lineTo(rightX + grooveDepthScaled, centerY);
-    ctx.lineTo(rightX, grooveBottom);
+    ctx.arc(
+      centerX - halfWidth - grooveDepthScaled / 2, 
+      centerY + halfOD - halfPinDiameter, 
+      halfPinDiameter, 
+      0, 
+      Math.PI * 2
+    );
+    ctx.fillStyle = "#ddd";
+    ctx.fill();
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.stroke();
     
-    // Draw keyway (visible in side view as a small rectangle)
-    const keyWayWidth = parameters.keyWayWidth * scale;
-    const keyWayDepth = parameters.keyWayDepth * scale;
-    
+    // Draw material thickness
     ctx.beginPath();
-    ctx.rect(centerX - boreRadius - keyWayDepth, centerY - keyWayWidth / 2, keyWayDepth, keyWayWidth);
+    ctx.rect(
+      centerX - halfWidth + frontsideOffsetScaled, 
+      centerY - halfID, 
+      materialThicknessScaled, 
+      insideDiameter * scale
+    );
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
+    
+    // Fill with gradient
+    const gradient3 = ctx.createLinearGradient(
+      centerX - halfWidth + frontsideOffsetScaled, 
+      centerY, 
+      centerX - halfWidth + frontsideOffsetScaled + materialThicknessScaled, 
+      centerY
+    );
+    gradient3.addColorStop(0, "#aaa");
+    gradient3.addColorStop(0.5, "#666");
+    gradient3.addColorStop(1, "#aaa");
+    ctx.fillStyle = gradient3;
+    ctx.fill();
+    
+    // Draw the stickout
+    ctx.beginPath();
+    ctx.rect(
+      centerX - halfWidth + frontsideOffsetScaled + materialThicknessScaled, 
+      centerY - halfThroughBore, 
+      stickoutScaled, 
+      throughBore * scale
+    );
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    
+    // Fill with gradient
+    const gradient4 = ctx.createLinearGradient(
+      centerX - halfWidth + frontsideOffsetScaled + materialThicknessScaled, 
+      centerY, 
+      centerX - halfWidth + frontsideOffsetScaled + materialThicknessScaled + stickoutScaled, 
+      centerY
+    );
+    gradient4.addColorStop(0, "#888");
+    gradient4.addColorStop(1, "#ccc");
+    ctx.fillStyle = gradient4;
+    ctx.fill();
     
     // Draw dimension lines
     drawDimensionLines(ctx, centerX, centerY, scale, "side");
+    
+    // Draw labels
+    drawLabels(ctx, centerX, centerY, scale, "side");
   };
   
   // Draw dimension lines
@@ -189,53 +331,169 @@ const PulleyDrawingArea: React.FC<{
     scale: number,
     view: "top" | "side"
   ) => {
-    const { diameter, thickness, boreDiameter } = parameters;
+    const { 
+      outsideDiameter, 
+      insideDiameter, 
+      overpinDiameter,
+      width, 
+      throughBore 
+    } = parameters;
     
-    ctx.setLineDash([5, 5]);
+    ctx.setLineDash([5, 3]);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = "#666";
-    ctx.fillStyle = "#666";
-    ctx.font = "12px Arial";
+    ctx.strokeStyle = "#555";
     
     if (view === "top") {
-      // Draw diameter dimension line
+      // Draw crosshair centerlines
       ctx.beginPath();
-      ctx.moveTo(centerX - (diameter / 2) * scale, centerY + (diameter / 2) * scale + 20);
-      ctx.lineTo(centerX + (diameter / 2) * scale, centerY + (diameter / 2) * scale + 20);
+      ctx.moveTo(centerX - (outsideDiameter / 2) * scale - 20, centerY);
+      ctx.lineTo(centerX + (outsideDiameter / 2) * scale + 20, centerY);
+      ctx.moveTo(centerX, centerY - (outsideDiameter / 2) * scale - 20);
+      ctx.lineTo(centerX, centerY + (outsideDiameter / 2) * scale + 20);
       ctx.stroke();
       
-      // Draw diameter text
-      ctx.fillText(`Ø${diameter}${parameters.unit}`, centerX, centerY + (diameter / 2) * scale + 40);
-      
-      // Draw bore diameter dimension line
+      // Draw outer diameter dimension line
       ctx.beginPath();
-      ctx.moveTo(centerX - (boreDiameter / 2) * scale, centerY - (boreDiameter / 2) * scale - 20);
-      ctx.lineTo(centerX + (boreDiameter / 2) * scale, centerY - (boreDiameter / 2) * scale - 20);
+      ctx.moveTo(centerX, centerY - (outsideDiameter / 2) * scale);
+      ctx.lineTo(centerX + (outsideDiameter / 2) * scale + 40, centerY - (outsideDiameter / 2) * scale);
+      ctx.lineTo(centerX + (outsideDiameter / 2) * scale + 40, centerY + (outsideDiameter / 2) * scale);
+      ctx.lineTo(centerX, centerY + (outsideDiameter / 2) * scale);
       ctx.stroke();
       
-      // Draw bore diameter text
-      ctx.fillText(`Ø${boreDiameter}${parameters.unit}`, centerX, centerY - (boreDiameter / 2) * scale - 30);
     } else {
-      // Draw thickness dimension line
+      // Draw width dimension line
       ctx.beginPath();
-      ctx.moveTo(centerX - (diameter / 2) * scale - 20, centerY - (thickness / 2) * scale);
-      ctx.lineTo(centerX - (diameter / 2) * scale - 20, centerY + (thickness / 2) * scale);
+      ctx.moveTo(centerX - (width / 2) * scale, centerY - (outsideDiameter / 2) * scale - 40);
+      ctx.lineTo(centerX + (width / 2) * scale, centerY - (outsideDiameter / 2) * scale - 40);
       ctx.stroke();
       
-      // Draw thickness text
-      ctx.fillText(`${thickness}${parameters.unit}`, centerX - (diameter / 2) * scale - 40, centerY);
-      
-      // Draw groove depth dimension line
+      // Draw outside diameter dimension line
       ctx.beginPath();
-      ctx.moveTo(centerX + (diameter / 2) * scale + 20, centerY);
-      ctx.lineTo(centerX + (diameter / 2) * scale + 20 + parameters.grooveDepth * scale, centerY);
+      ctx.moveTo(centerX + (width / 2) * scale + 20, centerY - (outsideDiameter / 2) * scale);
+      ctx.lineTo(centerX + (width / 2) * scale + 40, centerY - (outsideDiameter / 2) * scale);
+      ctx.lineTo(centerX + (width / 2) * scale + 40, centerY + (outsideDiameter / 2) * scale);
+      ctx.lineTo(centerX + (width / 2) * scale + 20, centerY + (outsideDiameter / 2) * scale);
       ctx.stroke();
       
-      // Draw groove depth text
-      ctx.fillText(`${parameters.grooveDepth}${parameters.unit}`, centerX + (diameter / 2) * scale + 30, centerY - 10);
+      // Draw inside diameter dimension line
+      ctx.beginPath();
+      ctx.moveTo(centerX + (width / 2) * scale + 60, centerY - (insideDiameter / 2) * scale);
+      ctx.lineTo(centerX + (width / 2) * scale + 80, centerY - (insideDiameter / 2) * scale);
+      ctx.lineTo(centerX + (width / 2) * scale + 80, centerY + (insideDiameter / 2) * scale);
+      ctx.lineTo(centerX + (width / 2) * scale + 60, centerY + (insideDiameter / 2) * scale);
+      ctx.stroke();
+      
+      // Draw overpin diameter dimension line
+      ctx.beginPath();
+      ctx.moveTo(centerX + (width / 2) * scale + 100, centerY - (overpinDiameter / 2) * scale);
+      ctx.lineTo(centerX + (width / 2) * scale + 120, centerY - (overpinDiameter / 2) * scale);
+      ctx.lineTo(centerX + (width / 2) * scale + 120, centerY + (overpinDiameter / 2) * scale);
+      ctx.lineTo(centerX + (width / 2) * scale + 100, centerY + (overpinDiameter / 2) * scale);
+      ctx.stroke();
     }
     
     ctx.setLineDash([]);
+  };
+  
+  // Draw labels
+  const drawLabels = (
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    scale: number,
+    view: "top" | "side"
+  ) => {
+    const { 
+      outsideDiameter, 
+      insideDiameter, 
+      overpinDiameter,
+      materialThickness,
+      width, 
+      pinDiameter, 
+      throughBore, 
+      frontsideOffset,
+      stickout,
+      unit
+    } = parameters;
+    
+    ctx.font = "12px Arial";
+    ctx.fillStyle = "#333";
+    ctx.textAlign = "center";
+    
+    if (view === "top") {
+      // Draw keyway label
+      ctx.fillText("Keyway", centerX - (throughBore / 2) * scale - 40, centerY - 20);
+      
+      // Draw outside diameter label
+      ctx.fillText(
+        `Outside Diameter: ${outsideDiameter}${unit}`, 
+        centerX, 
+        centerY + (outsideDiameter / 2) * scale + 30
+      );
+      
+      // Draw throughbore label
+      ctx.fillText(
+        `Throughbore: ${throughBore}${unit}`, 
+        centerX, 
+        centerY - (throughBore / 2) * scale - 10
+      );
+    } else {
+      // Draw width label
+      ctx.fillText(
+        `Width: ${width}${unit}`, 
+        centerX, 
+        centerY - (outsideDiameter / 2) * scale - 50
+      );
+      
+      // Draw pin diameter label
+      ctx.fillText(
+        `Pin Diameter: ${pinDiameter}${unit}`, 
+        centerX - (width / 2) * scale - 60, 
+        centerY - (outsideDiameter / 2) * scale + 20
+      );
+      
+      // Draw material thickness label
+      ctx.fillText(
+        `Material Thickness: ${materialThickness}${unit}`, 
+        centerX - (width / 2) * scale + 20, 
+        centerY
+      );
+      
+      // Draw outside diameter label
+      ctx.fillText(
+        `Outside Diameter: ${outsideDiameter}${unit}`, 
+        centerX + (width / 2) * scale + 60, 
+        centerY
+      );
+      
+      // Draw inside diameter label
+      ctx.fillText(
+        `Inside Diameter: ${insideDiameter}${unit}`, 
+        centerX + (width / 2) * scale + 60, 
+        centerY + 20
+      );
+      
+      // Draw overpin diameter label
+      ctx.fillText(
+        `Overpin Diameter: ${overpinDiameter}${unit}`, 
+        centerX + (width / 2) * scale + 60, 
+        centerY + 40
+      );
+      
+      // Draw stickout label
+      ctx.fillText(
+        `Stickout: ${stickout}${unit}`, 
+        centerX - (width / 2) * scale + materialThickness * scale + 20, 
+        centerY - (throughBore / 2) * scale - 10
+      );
+      
+      // Draw frontside offset label
+      ctx.fillText(
+        `Frontside Offset: ${frontsideOffset}${unit}`, 
+        centerX - (width / 2) * scale + (frontsideOffset / 2) * scale, 
+        centerY - (throughBore / 2) * scale - 10
+      );
+    }
   };
   
   return <canvas ref={canvasRef} className={className} />;
@@ -251,8 +509,18 @@ const PulleyDesign = () => {
     const { name, value } = e.target;
     const numValue = parseFloat(value);
     
-    if (name === "boreDiameter" && numValue >= parameters.diameter) {
-      toast.error("Bore diameter must be smaller than the pulley diameter");
+    if (name === "throughBore" && numValue >= parameters.insideDiameter) {
+      toast.error("Throughbore must be smaller than the inside diameter");
+      return;
+    }
+    
+    if (name === "insideDiameter" && numValue >= parameters.outsideDiameter) {
+      toast.error("Inside diameter must be smaller than the outside diameter");
+      return;
+    }
+    
+    if (name === "outsideDiameter" && numValue >= parameters.overpinDiameter) {
+      toast.error("Outside diameter must be smaller than the overpin diameter");
       return;
     }
     
@@ -273,23 +541,28 @@ const PulleyDesign = () => {
   // Generate drawing (update parameters)
   const handleGenerateDrawing = () => {
     // Validate parameters
-    if (parameters.diameter <= 0 || parameters.thickness <= 0 || parameters.boreDiameter <= 0) {
-      toast.error("All dimensions must be positive values");
+    if (parameters.outsideDiameter <= 0 || parameters.insideDiameter <= 0 || parameters.throughBore <= 0) {
+      toast.error("All diameters must be positive values");
       return;
     }
     
-    if (parameters.boreDiameter >= parameters.diameter) {
-      toast.error("Bore diameter must be smaller than the pulley diameter");
+    if (parameters.throughBore >= parameters.insideDiameter) {
+      toast.error("Throughbore must be smaller than the inside diameter");
       return;
     }
     
-    if (parameters.grooveDepth <= 0 || parameters.grooveWidth <= 0) {
-      toast.error("Groove dimensions must be positive values");
+    if (parameters.insideDiameter >= parameters.outsideDiameter) {
+      toast.error("Inside diameter must be smaller than the outside diameter");
       return;
     }
     
-    if (parameters.keyWayWidth <= 0 || parameters.keyWayDepth <= 0) {
-      toast.error("Keyway dimensions must be positive values");
+    if (parameters.outsideDiameter >= parameters.overpinDiameter) {
+      toast.error("Outside diameter must be smaller than the overpin diameter");
+      return;
+    }
+    
+    if (parameters.width <= 0 || parameters.materialThickness <= 0) {
+      toast.error("Width and material thickness must be positive values");
       return;
     }
     
@@ -339,20 +612,20 @@ const PulleyDesign = () => {
       pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
       
       // Add metadata
-      const { diameter, thickness, boreDiameter, unit } = parameters;
+      const { outsideDiameter, width, throughBore, unit } = parameters;
       const date = new Date().toLocaleDateString();
       
       // Add footer with specifications
       pdf.setFontSize(10);
       pdf.text(
-        `Pulley Drawing - Ø${diameter}×${thickness} ${unit} - Bore: Ø${boreDiameter} ${unit} - Generated on ${date}`, 
+        `Pulley Drawing - OD: ${outsideDiameter}${unit} × W: ${width}${unit} - Bore: ${throughBore}${unit} - Generated on ${date}`, 
         pdfWidth / 2, 
         pdfHeight - 10, 
         { align: 'center' }
       );
       
       // Save the PDF
-      pdf.save(`pulley_drawing_D${diameter}_T${thickness}_${unit}.pdf`);
+      pdf.save(`pulley_drawing_OD${outsideDiameter}_W${width}_${unit}.pdf`);
       toast.dismiss();
       toast.success("PDF exported successfully");
     } catch (error) {
@@ -399,25 +672,25 @@ const PulleyDesign = () => {
       <div className="max-w-6xl mx-auto">
         <motion.div variants={itemVariants} className="text-center mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
-            Pulley Design Generator
+            Drive Pulley Design Generator
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Create precise technical drawings for pulleys with custom dimensions.
+            Create precise technical drawings for drive pulleys with custom dimensions.
           </p>
         </motion.div>
         
         <motion.div variants={itemVariants}>
-          <div className="control-panel animate-slide-in">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-5">
+          <div className="control-panel bg-card p-5 rounded-lg shadow-sm mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 mb-5">
               <div className="space-y-1.5">
-                <Label htmlFor="diameter" className="control-label">
-                  Diameter
+                <Label htmlFor="outsideDiameter" className="control-label">
+                  Outside Diameter
                 </Label>
                 <Input
-                  id="diameter"
-                  name="diameter"
+                  id="outsideDiameter"
+                  name="outsideDiameter"
                   type="number"
-                  value={parameters.diameter}
+                  value={parameters.outsideDiameter}
                   onChange={handleInputChange}
                   min={1}
                   className="h-9"
@@ -425,14 +698,14 @@ const PulleyDesign = () => {
               </div>
               
               <div className="space-y-1.5">
-                <Label htmlFor="thickness" className="control-label">
-                  Thickness
+                <Label htmlFor="insideDiameter" className="control-label">
+                  Inside Diameter
                 </Label>
                 <Input
-                  id="thickness"
-                  name="thickness"
+                  id="insideDiameter"
+                  name="insideDiameter"
                   type="number"
-                  value={parameters.thickness}
+                  value={parameters.insideDiameter}
                   onChange={handleInputChange}
                   min={1}
                   className="h-9"
@@ -440,14 +713,14 @@ const PulleyDesign = () => {
               </div>
               
               <div className="space-y-1.5">
-                <Label htmlFor="boreDiameter" className="control-label">
-                  Bore Diameter
+                <Label htmlFor="overpinDiameter" className="control-label">
+                  Overpin Diameter
                 </Label>
                 <Input
-                  id="boreDiameter"
-                  name="boreDiameter"
+                  id="overpinDiameter"
+                  name="overpinDiameter"
                   type="number"
-                  value={parameters.boreDiameter}
+                  value={parameters.overpinDiameter}
                   onChange={handleInputChange}
                   min={1}
                   className="h-9"
@@ -455,14 +728,14 @@ const PulleyDesign = () => {
               </div>
               
               <div className="space-y-1.5">
-                <Label htmlFor="grooveDepth" className="control-label">
-                  Groove Depth
+                <Label htmlFor="throughBore" className="control-label">
+                  Throughbore
                 </Label>
                 <Input
-                  id="grooveDepth"
-                  name="grooveDepth"
+                  id="throughBore"
+                  name="throughBore"
                   type="number"
-                  value={parameters.grooveDepth}
+                  value={parameters.throughBore}
                   onChange={handleInputChange}
                   min={1}
                   className="h-9"
@@ -470,16 +743,76 @@ const PulleyDesign = () => {
               </div>
               
               <div className="space-y-1.5">
-                <Label htmlFor="grooveWidth" className="control-label">
-                  Groove Width
+                <Label htmlFor="width" className="control-label">
+                  Width
                 </Label>
                 <Input
-                  id="grooveWidth"
-                  name="grooveWidth"
+                  id="width"
+                  name="width"
                   type="number"
-                  value={parameters.grooveWidth}
+                  value={parameters.width}
                   onChange={handleInputChange}
                   min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="materialThickness" className="control-label">
+                  Material Thickness
+                </Label>
+                <Input
+                  id="materialThickness"
+                  name="materialThickness"
+                  type="number"
+                  value={parameters.materialThickness}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="pinDiameter" className="control-label">
+                  Pin Diameter
+                </Label>
+                <Input
+                  id="pinDiameter"
+                  name="pinDiameter"
+                  type="number"
+                  value={parameters.pinDiameter}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="frontsideOffset" className="control-label">
+                  Frontside Offset
+                </Label>
+                <Input
+                  id="frontsideOffset"
+                  name="frontsideOffset"
+                  type="number"
+                  value={parameters.frontsideOffset}
+                  onChange={handleInputChange}
+                  min={0}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="stickout" className="control-label">
+                  Stickout
+                </Label>
+                <Input
+                  id="stickout"
+                  name="stickout"
+                  type="number"
+                  value={parameters.stickout}
+                  onChange={handleInputChange}
+                  min={0}
                   className="h-9"
                 />
               </div>
@@ -494,7 +827,7 @@ const PulleyDesign = () => {
                   type="number"
                   value={parameters.keyWayWidth}
                   onChange={handleInputChange}
-                  min={1}
+                  min={0}
                   className="h-9"
                 />
               </div>
@@ -509,13 +842,29 @@ const PulleyDesign = () => {
                   type="number"
                   value={parameters.keyWayDepth}
                   onChange={handleInputChange}
-                  min={1}
+                  min={0}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="grooveAngle" className="control-label">
+                  Groove Angle (°)
+                </Label>
+                <Input
+                  id="grooveAngle"
+                  name="grooveAngle"
+                  type="number"
+                  value={parameters.grooveAngle}
+                  onChange={handleInputChange}
+                  min={10}
+                  max={90}
                   className="h-9"
                 />
               </div>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
               <div className="space-y-1.5 w-full sm:w-auto">
                 <Label className="control-label">Unit</Label>
                 <div className="flex border rounded-md overflow-hidden">
@@ -541,7 +890,7 @@ const PulleyDesign = () => {
                   Generate
                 </Button>
                 <Button variant="outline" onClick={handleExportPDF} className="flex-1 sm:flex-none">
-                  PDF
+                  Export PDF
                 </Button>
               </div>
             </div>
@@ -551,35 +900,40 @@ const PulleyDesign = () => {
         <motion.div variants={itemVariants} className="mt-8">
           <div 
             ref={drawingRef}
-            className="bg-white rounded-lg shadow-soft border border-border overflow-hidden p-4"
+            className="bg-white rounded-lg shadow-md border border-border overflow-hidden p-6"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold">Drive Pulley</h2>
+              <p className="text-sm text-muted-foreground">Reference Drawing</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Top View */}
-              <div className="relative">
+              <div className="relative bg-gray-50 p-4 rounded-lg">
                 <PulleyDrawingArea 
                   parameters={parameters}
                   view="top"
-                  className="w-full transition-all duration-500 ease-out-expo"
+                  className="w-full h-full transition-all duration-500 ease-out-expo"
                 />
                 <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
                   <div className="text-xs font-medium text-muted-foreground">TOP VIEW</div>
                   <div className="text-sm font-medium mt-1">
-                    Ø{parameters.diameter} {parameters.unit}
+                    Ø{parameters.outsideDiameter} {parameters.unit}
                   </div>
                 </div>
               </div>
               
               {/* Side View */}
-              <div className="relative">
+              <div className="relative bg-gray-50 p-4 rounded-lg">
                 <PulleyDrawingArea 
                   parameters={parameters}
                   view="side"
-                  className="w-full transition-all duration-500 ease-out-expo"
+                  className="w-full h-full transition-all duration-500 ease-out-expo"
                 />
                 <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
                   <div className="text-xs font-medium text-muted-foreground">SIDE VIEW</div>
                   <div className="text-sm font-medium mt-1">
-                    T: {parameters.thickness} {parameters.unit}
+                    W: {parameters.width} {parameters.unit}
                   </div>
                 </div>
               </div>
@@ -591,19 +945,19 @@ const PulleyDesign = () => {
                 <div>
                   <div className="text-xs font-medium text-muted-foreground">PULLEY DRAWING</div>
                   <div className="text-sm font-medium mt-1">
-                    Ø{parameters.diameter} × {parameters.thickness} {parameters.unit}
+                    OD: Ø{parameters.outsideDiameter} {parameters.unit}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-muted-foreground">BORE DIAMETER</div>
+                  <div className="text-xs font-medium text-muted-foreground">BORE</div>
                   <div className="text-sm font-medium mt-1">
-                    Ø{parameters.boreDiameter} {parameters.unit}
+                    Ø{parameters.throughBore} {parameters.unit}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-muted-foreground">V-GROOVE</div>
+                  <div className="text-xs font-medium text-muted-foreground">GROOVE</div>
                   <div className="text-sm font-medium mt-1">
-                    D: {parameters.grooveDepth} × W: {parameters.grooveWidth} {parameters.unit}
+                    {parameters.grooveAngle}° Angle
                   </div>
                 </div>
                 <div>

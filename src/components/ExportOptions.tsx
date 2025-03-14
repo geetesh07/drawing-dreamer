@@ -109,12 +109,14 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
       <button 
         onClick={exportAsDXF}
         className="text-sm font-medium px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors"
+        data-export-dxf
       >
         Export DXF
       </button>
       <button 
         onClick={exportAsPDF}
         className="text-sm font-medium px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        data-export-pdf
       >
         Export PDF
       </button>

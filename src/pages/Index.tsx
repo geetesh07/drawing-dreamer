@@ -30,10 +30,10 @@ const Index = () => {
     setIsLoading(true);
     
     try {
-      // Using the ExportOptions component's logic
-      const exportOptions = document.querySelector('[data-export-dxf]') as HTMLButtonElement;
-      if (exportOptions) {
-        exportOptions.click();
+      // Using the ExportOptions component's logic directly
+      const exportDXFButton = document.querySelector('[data-export-dxf]') as HTMLButtonElement;
+      if (exportDXFButton) {
+        exportDXFButton.click();
       }
     } finally {
       setIsLoading(false);
@@ -45,10 +45,10 @@ const Index = () => {
     setIsLoading(true);
     
     try {
-      // Using the ExportOptions component's logic
-      const exportOptions = document.querySelector('[data-export-pdf]') as HTMLButtonElement;
-      if (exportOptions) {
-        exportOptions.click();
+      // Using the ExportOptions component's logic directly
+      const exportPDFButton = document.querySelector('[data-export-pdf]') as HTMLButtonElement;
+      if (exportPDFButton) {
+        exportPDFButton.click();
       }
     } finally {
       setIsLoading(false);
@@ -178,17 +178,20 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Add export options with data attributes */}
-          <div className="mt-4 hidden">
+          {/* Hidden but functional ExportOptions component */}
+          <div className="hidden">
             <ExportOptions dimensions={dimensions} drawingRef={drawingRef} />
           </div>
           
+          {/* Visible export buttons that trigger the hidden component functionality */}
           <div className="mt-4 flex justify-end space-x-2">
             <button 
               data-export-dxf
               onClick={() => {
-                const exportOptions = new ExportOptions({ dimensions, drawingRef });
-                exportOptions.exportAsDXF();
+                const exportOptionsEl = document.querySelector('[data-export-dxf]');
+                if (exportOptionsEl) {
+                  exportOptionsEl.dispatchEvent(new Event('click'));
+                }
               }}
               className="text-sm font-medium px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors"
             >
@@ -197,8 +200,10 @@ const Index = () => {
             <button 
               data-export-pdf
               onClick={() => {
-                const exportOptions = new ExportOptions({ dimensions, drawingRef });
-                exportOptions.exportAsPDF();
+                const exportOptionsEl = document.querySelector('[data-export-pdf]');
+                if (exportOptionsEl) {
+                  exportOptionsEl.dispatchEvent(new Event('click'));
+                }
               }}
               className="text-sm font-medium px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >

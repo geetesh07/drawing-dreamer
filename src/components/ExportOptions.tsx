@@ -24,7 +24,7 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
         return;
       }
       
-      // Generate DXF content
+      // Generate DXF content with both views
       const dxfContent = generateDXF(dimensions);
       
       // Create blob and download
@@ -34,7 +34,7 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
       link.download = `drawing_${width}x${height}R${cornerRadius}${unit}.dxf`;
       
       link.click();
-      toast.success("DXF file exported successfully");
+      toast.success("DXF file with both views exported successfully");
     } catch (error) {
       console.error("Error exporting DXF:", error);
       toast.error("Error exporting DXF file. Please try again.");
@@ -96,7 +96,7 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
       // Save the PDF
       pdf.save(`production_drawing_${width}x${height}R${cornerRadius}${unit}.pdf`);
       toast.dismiss();
-      toast.success("PDF file exported successfully");
+      toast.success("PDF file with both views exported successfully");
     } catch (error) {
       console.error("Error exporting PDF:", error);
       toast.dismiss();

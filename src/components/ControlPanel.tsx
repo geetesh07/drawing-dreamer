@@ -126,7 +126,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         <div className="space-y-1.5 w-full sm:w-auto">
           <Label className="control-label">Unit</Label>
           <div className="flex border rounded-md overflow-hidden">
-            {(['mm', 'cm', 'in'] as Unit[]).map((unit) => (
+            {(['mm', 'cm', 'm', 'in'] as Unit[]).map((unit) => (
               <button
                 key={unit}
                 className={cn(

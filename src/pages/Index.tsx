@@ -3,19 +3,10 @@ import React, { useState, useRef } from "react";
 import DrawingArea from "@/components/DrawingArea";
 import ControlPanel from "@/components/ControlPanel";
 import ViewSelector from "@/components/ViewSelector";
-import { DrawingDimensions, DEFAULT_DIMENSIONS, ViewType, generateDXF } from "@/utils/drawingUtils";
+import ExportOptions from "@/components/ExportOptions";
+import { DrawingDimensions, DEFAULT_DIMENSIONS } from "@/utils/drawingUtils";
 import { toast } from "sonner";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
 import { motion } from "framer-motion";
-
-// Add dynamic imports for the libraries we're using
-const loadLibraries = async () => {
-  // We're importing these to ensure they're available for the export
-  const html2canvasLib = await import("html2canvas");
-  const jsPDFLib = await import("jspdf");
-  return { html2canvas: html2canvasLib.default, jsPDF: jsPDFLib.jsPDF };
-};
 
 const Index = () => {
   const [dimensions, setDimensions] = useState<DrawingDimensions>(DEFAULT_DIMENSIONS);
@@ -35,100 +26,30 @@ const Index = () => {
   };
 
   // Export as DXF
-  const handleExportDXF = async () => {
+  const handleExportDXF = () => {
     setIsLoading(true);
     
     try {
-      const { width, height, cornerRadius, unit } = dimensions;
-      
-      if (width <= 0 || height <= 0) {
-        toast.error("Width and height must be positive values");
-        setIsLoading(false);
-        return;
+      // Using the ExportOptions component's logic
+      const exportOptions = document.querySelector('[data-export-dxf]') as HTMLButtonElement;
+      if (exportOptions) {
+        exportOptions.click();
       }
-      
-      // Generate DXF content
-      const dxfContent = generateDXF(dimensions);
-      
-      // Create blob and download
-      const blob = new Blob([dxfContent], { type: 'text/plain' });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `drawing_${width}x${height}R${cornerRadius}${unit}.dxf`;
-      
-      link.click();
-      toast.success("DXF file exported successfully");
-    } catch (error) {
-      console.error("Error exporting DXF:", error);
-      toast.error("Error exporting DXF file. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   // Export as PDF
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     setIsLoading(true);
     
     try {
-      if (!drawingRef.current) {
-        toast.error("Drawing not found. Please generate a drawing first.");
-        setIsLoading(false);
-        return;
+      // Using the ExportOptions component's logic
+      const exportOptions = document.querySelector('[data-export-pdf]') as HTMLButtonElement;
+      if (exportOptions) {
+        exportOptions.click();
       }
-      
-      // Load libraries dynamically
-      const { html2canvas, jsPDF } = await loadLibraries();
-      
-      const canvas = await html2canvas(drawingRef.current, {
-        scale: 2, // Increase quality
-        backgroundColor: '#ffffff'
-      });
-      
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      
-      // Create PDF with proper dimensions
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      // Get PDF dimensions
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      // Calculate scaling to fit the drawing
-      const scaleFactor = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height) * 0.9;
-      const scaledWidth = canvas.width * scaleFactor;
-      const scaledHeight = canvas.height * scaleFactor;
-      
-      // Center the drawing on the PDF
-      const x = (pdfWidth - scaledWidth) / 2;
-      const y = (pdfHeight - scaledHeight) / 2;
-      
-      // Add the drawing to the PDF
-      pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
-      
-      // Add metadata
-      const { width, height, cornerRadius, depth, unit } = dimensions;
-      const date = new Date().toLocaleDateString();
-      
-      // Add footer with dimensions
-      pdf.setFontSize(10);
-      pdf.text(
-        `Production Drawing - ${width}x${height}x${depth} ${unit} - R${cornerRadius} ${unit} - Generated on ${date}`, 
-        pdfWidth / 2, 
-        pdfHeight - 10, 
-        { align: 'center' }
-      );
-      
-      // Save the PDF
-      pdf.save(`production_drawing_${width}x${height}R${cornerRadius}${unit}.pdf`);
-      toast.success("PDF file exported successfully");
-    } catch (error) {
-      console.error("Error exporting PDF:", error);
-      toast.error("Error exporting PDF file. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -189,69 +110,100 @@ const Index = () => {
         <motion.div variants={itemVariants} className="mt-8">
           <ViewSelector activeView="top" onViewChange={() => {}} />
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Top View */}
-            <div className="relative bg-white rounded-lg shadow-soft border border-border overflow-hidden">
-              <DrawingArea 
-                dimensions={dimensions} 
-                activeView="top" 
-                className="w-full transition-all duration-500 ease-out-expo"
-              />
-              <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
-                <div className="text-xs font-medium text-muted-foreground">TOP VIEW</div>
-                <div className="text-sm font-medium mt-1">
-                  {dimensions.width} x {dimensions.height} {dimensions.unit}
+          {/* Combine both views in a single container for better exporting */}
+          <div 
+            ref={drawingRef}
+            className="bg-white rounded-lg shadow-soft border border-border overflow-hidden p-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Top View */}
+              <div className="relative">
+                <DrawingArea 
+                  dimensions={dimensions} 
+                  activeView="top" 
+                  className="w-full transition-all duration-500 ease-out-expo"
+                />
+                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
+                  <div className="text-xs font-medium text-muted-foreground">TOP VIEW</div>
+                  <div className="text-sm font-medium mt-1">
+                    {dimensions.width} x {dimensions.height} {dimensions.unit}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Side View */}
+              <div className="relative">
+                <DrawingArea 
+                  dimensions={dimensions} 
+                  activeView="side" 
+                  className="w-full transition-all duration-500 ease-out-expo"
+                />
+                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
+                  <div className="text-xs font-medium text-muted-foreground">SIDE VIEW</div>
+                  <div className="text-sm font-medium mt-1">
+                    {dimensions.depth} x {dimensions.height} {dimensions.unit}
+                  </div>
                 </div>
               </div>
             </div>
             
-            {/* Side View */}
-            <div 
-              ref={drawingRef}
-              className="relative bg-white rounded-lg shadow-soft border border-border overflow-hidden"
-            >
-              <DrawingArea 
-                dimensions={dimensions} 
-                activeView="side" 
-                className="w-full transition-all duration-500 ease-out-expo"
-              />
-              <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
-                <div className="text-xs font-medium text-muted-foreground">SIDE VIEW</div>
-                <div className="text-sm font-medium mt-1">
-                  {dimensions.depth} x {dimensions.height} {dimensions.unit}
+            {/* Common title block below both views */}
+            <div className="mt-6 bg-white/90 backdrop-blur-sm border border-border rounded-md p-4 shadow-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">PRODUCTION DRAWING</div>
+                  <div className="text-sm font-medium mt-1">
+                    {dimensions.width} x {dimensions.height} x {dimensions.depth} {dimensions.unit}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">CORNER RADIUS</div>
+                  <div className="text-sm font-medium mt-1">
+                    {dimensions.cornerRadius} {dimensions.unit}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">DATE</div>
+                  <div className="text-sm font-medium mt-1">
+                    {new Date().toLocaleDateString()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">SCALE</div>
+                  <div className="text-sm font-medium mt-1">
+                    1:1
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           
-          {/* Common title block below both views */}
-          <div className="mt-6 bg-white/90 backdrop-blur-sm border border-border rounded-md p-4 shadow-sm">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <div className="text-xs font-medium text-muted-foreground">PRODUCTION DRAWING</div>
-                <div className="text-sm font-medium mt-1">
-                  {dimensions.width} x {dimensions.height} x {dimensions.depth} {dimensions.unit}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-medium text-muted-foreground">CORNER RADIUS</div>
-                <div className="text-sm font-medium mt-1">
-                  {dimensions.cornerRadius} {dimensions.unit}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-medium text-muted-foreground">DATE</div>
-                <div className="text-sm font-medium mt-1">
-                  {new Date().toLocaleDateString()}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-medium text-muted-foreground">SCALE</div>
-                <div className="text-sm font-medium mt-1">
-                  1:1
-                </div>
-              </div>
-            </div>
+          {/* Add export options with data attributes */}
+          <div className="mt-4 hidden">
+            <ExportOptions dimensions={dimensions} drawingRef={drawingRef} />
+          </div>
+          
+          <div className="mt-4 flex justify-end space-x-2">
+            <button 
+              data-export-dxf
+              onClick={() => {
+                const exportOptions = new ExportOptions({ dimensions, drawingRef });
+                exportOptions.exportAsDXF();
+              }}
+              className="text-sm font-medium px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors"
+            >
+              Export DXF
+            </button>
+            <button 
+              data-export-pdf
+              onClick={() => {
+                const exportOptions = new ExportOptions({ dimensions, drawingRef });
+                exportOptions.exportAsPDF();
+              }}
+              className="text-sm font-medium px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Export PDF
+            </button>
           </div>
         </motion.div>
         

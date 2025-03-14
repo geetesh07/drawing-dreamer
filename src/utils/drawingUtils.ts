@@ -1,5 +1,5 @@
 // Drawing utilities
-export type Unit = 'mm' | 'cm' | 'in';
+export type Unit = 'mm' | 'cm' | 'm' | 'in';
 export type ViewType = 'top' | 'side';
 
 export interface DrawingDimensions {
@@ -21,6 +21,7 @@ export const DEFAULT_DIMENSIONS: DrawingDimensions = {
 export const UNIT_CONVERSION = {
   mm: 1,
   cm: 10,
+  m: 1000,
   in: 25.4,
 };
 
@@ -98,15 +99,16 @@ export function generateRoundedRectPath(
 }
 
 /**
- * Generate DXF content
+ * Generate DXF content for both top and side views
  */
 export function generateDXF(dimensions: DrawingDimensions): string {
-  const { width, height, cornerRadius, unit } = dimensions;
+  const { width, height, depth = 50, cornerRadius, unit } = dimensions;
   const validRadius = validateCornerRadius(width, height, cornerRadius);
   
   // Create simplified DXF content
   let dxfContent = `0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nTABLES\n0\nENDSEC\n0\nSECTION\n2\nBLOCKS\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n`;
   
+  // Top view
   // Top-right corner arc
   dxfContent += `0\nARC\n8\n0\n10\n${width - validRadius}\n20\n${validRadius}\n30\n0\n40\n${validRadius}\n50\n0\n51\n90\n`;
   
@@ -130,6 +132,15 @@ export function generateDXF(dimensions: DrawingDimensions): string {
   
   // Left line
   dxfContent += `0\nLINE\n8\n0\n10\n0\n20\n${validRadius}\n11\n0\n21\n${height - validRadius}\n`;
+  
+  // Side view - offset to the right
+  const sideViewOffsetX = width + 50; // 50 units gap between views
+  
+  // Draw simple rectangle for side view
+  dxfContent += `0\nLINE\n8\n0\n10\n${sideViewOffsetX}\n20\n0\n11\n${sideViewOffsetX + depth}\n21\n0\n`; // Top line
+  dxfContent += `0\nLINE\n8\n0\n10\n${sideViewOffsetX + depth}\n20\n0\n11\n${sideViewOffsetX + depth}\n21\n${height}\n`; // Right line
+  dxfContent += `0\nLINE\n8\n0\n10\n${sideViewOffsetX + depth}\n20\n${height}\n11\n${sideViewOffsetX}\n21\n${height}\n`; // Bottom line
+  dxfContent += `0\nLINE\n8\n0\n10\n${sideViewOffsetX}\n20\n${height}\n11\n${sideViewOffsetX}\n21\n0\n`; // Left line
   
   dxfContent += `0\nENDSEC\n0\nEOF`;
   

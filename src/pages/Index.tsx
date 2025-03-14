@@ -19,14 +19,8 @@ const loadLibraries = async () => {
 
 const Index = () => {
   const [dimensions, setDimensions] = useState<DrawingDimensions>(DEFAULT_DIMENSIONS);
-  const [activeView, setActiveView] = useState<ViewType>("top");
   const [isLoading, setIsLoading] = useState(false);
   const drawingRef = useRef<HTMLDivElement>(null);
-
-  // Handle view change
-  const handleViewChange = (view: ViewType) => {
-    setActiveView(view);
-  };
 
   // Generate drawing (update dimensions)
   const handleGenerateDrawing = () => {
@@ -193,36 +187,71 @@ const Index = () => {
         </motion.div>
         
         <motion.div variants={itemVariants} className="mt-8">
-          <ViewSelector activeView={activeView} onViewChange={handleViewChange} />
+          <ViewSelector activeView="top" onViewChange={() => {}} />
           
-          <div 
-            ref={drawingRef} 
-            className="relative bg-white rounded-lg shadow-soft border border-border overflow-hidden"
-          >
-            <DrawingArea 
-              dimensions={dimensions} 
-              activeView={activeView} 
-              className="w-full transition-all duration-500 ease-out-expo"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Top View */}
+            <div className="relative bg-white rounded-lg shadow-soft border border-border overflow-hidden">
+              <DrawingArea 
+                dimensions={dimensions} 
+                activeView="top" 
+                className="w-full transition-all duration-500 ease-out-expo"
+              />
+              <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
+                <div className="text-xs font-medium text-muted-foreground">TOP VIEW</div>
+                <div className="text-sm font-medium mt-1">
+                  {dimensions.width} x {dimensions.height} {dimensions.unit}
+                </div>
+              </div>
+            </div>
             
-            {/* Title block */}
-            <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
-              <div className="text-xs font-medium text-muted-foreground">PRODUCTION DRAWING</div>
-              <div className="text-sm font-medium mt-1">
-                {dimensions.width} x {dimensions.height} x {dimensions.depth} {dimensions.unit}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Corner Radius: {dimensions.cornerRadius} {dimensions.unit}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Date: {new Date().toLocaleDateString()}
+            {/* Side View */}
+            <div 
+              ref={drawingRef}
+              className="relative bg-white rounded-lg shadow-soft border border-border overflow-hidden"
+            >
+              <DrawingArea 
+                dimensions={dimensions} 
+                activeView="side" 
+                className="w-full transition-all duration-500 ease-out-expo"
+              />
+              <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
+                <div className="text-xs font-medium text-muted-foreground">SIDE VIEW</div>
+                <div className="text-sm font-medium mt-1">
+                  {dimensions.depth} x {dimensions.height} {dimensions.unit}
+                </div>
               </div>
             </div>
           </div>
           
-          {/* View label */}
-          <div className="text-center text-sm font-medium text-muted-foreground mt-4">
-            {activeView === "top" ? "Top View" : "Side View"}
+          {/* Common title block below both views */}
+          <div className="mt-6 bg-white/90 backdrop-blur-sm border border-border rounded-md p-4 shadow-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">PRODUCTION DRAWING</div>
+                <div className="text-sm font-medium mt-1">
+                  {dimensions.width} x {dimensions.height} x {dimensions.depth} {dimensions.unit}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">CORNER RADIUS</div>
+                <div className="text-sm font-medium mt-1">
+                  {dimensions.cornerRadius} {dimensions.unit}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">DATE</div>
+                <div className="text-sm font-medium mt-1">
+                  {new Date().toLocaleDateString()}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">SCALE</div>
+                <div className="text-sm font-medium mt-1">
+                  1:1
+                </div>
+              </div>
+            </div>
           </div>
         </motion.div>
         

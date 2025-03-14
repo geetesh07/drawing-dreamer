@@ -1,4 +1,3 @@
-
 // Drawing utilities
 export type Unit = 'mm' | 'cm' | 'in';
 export type ViewType = 'top' | 'side';
@@ -16,7 +15,7 @@ export const DEFAULT_DIMENSIONS: DrawingDimensions = {
   height: 100,
   depth: 50,
   cornerRadius: 10,
-  unit: 'mm',
+  unit: 'mm', // Default to millimeters
 };
 
 export const UNIT_CONVERSION = {

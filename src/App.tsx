@@ -8,67 +8,99 @@ import Home from "./pages/Home";
 import Index from "./pages/Index";
 import PulleyDesign from "./pages/PulleyDesign";
 import IdlerDesign from "./pages/IdlerDesign";
+import Deployment from "./pages/Deployment";
 import NotFound from "./pages/NotFound";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { Link } from "react-router-dom";
-import { BriefcaseConveyorBelt, Circle, Home as HomeIcon, Ruler } from "lucide-react";
+import { BriefcaseConveyorBelt, Circle, Home as HomeIcon, Ruler, Moon, Sun, Server } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useTheme } from "./hooks/useTheme";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <div className="min-h-screen flex flex-col">
-          <header className="border-b bg-background">
-            <div className="container mx-auto py-4">
-              <NavigationMenu>
-                <NavigationMenuList>
-                  <NavigationMenuItem>
-                    <Link to="/" className={navigationMenuTriggerStyle()}>
-                      <HomeIcon className="mr-2 h-4 w-4" />
-                      Home
-                    </Link>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <Link to="/conveyor" className={navigationMenuTriggerStyle()}>
-                      <BriefcaseConveyorBelt className="mr-2 h-4 w-4" />
-                      Conveyor Belt
-                    </Link>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <Link to="/pulley" className={navigationMenuTriggerStyle()}>
-                      <Circle className="mr-2 h-4 w-4" />
-                      Pulley
-                    </Link>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <Link to="/idler" className={navigationMenuTriggerStyle()}>
-                      <Ruler className="mr-2 h-4 w-4" />
-                      Idler
-                    </Link>
-                  </NavigationMenuItem>
-                </NavigationMenuList>
-              </NavigationMenu>
-            </div>
-          </header>
-          
-          <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/conveyor" element={<Index />} />
-              <Route path="/pulley" element={<PulleyDesign />} />
-              <Route path="/idler" element={<IdlerDesign />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
-        </div>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const { theme, setTheme } = useTheme();
+  
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <div className="min-h-screen flex flex-col bg-background transition-colors duration-300">
+            <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+              <div className="container mx-auto py-4 flex justify-between items-center">
+                <NavigationMenu>
+                  <NavigationMenuList>
+                    <NavigationMenuItem>
+                      <Link to="/" className={navigationMenuTriggerStyle()}>
+                        <HomeIcon className="mr-2 h-4 w-4" />
+                        Home
+                      </Link>
+                    </NavigationMenuItem>
+                    <NavigationMenuItem>
+                      <Link to="/conveyor" className={navigationMenuTriggerStyle()}>
+                        <BriefcaseConveyorBelt className="mr-2 h-4 w-4" />
+                        Conveyor Belt
+                      </Link>
+                    </NavigationMenuItem>
+                    <NavigationMenuItem>
+                      <Link to="/pulley" className={navigationMenuTriggerStyle()}>
+                        <Circle className="mr-2 h-4 w-4" />
+                        Pulley
+                      </Link>
+                    </NavigationMenuItem>
+                    <NavigationMenuItem>
+                      <Link to="/idler" className={navigationMenuTriggerStyle()}>
+                        <Ruler className="mr-2 h-4 w-4" />
+                        Idler
+                      </Link>
+                    </NavigationMenuItem>
+                    <NavigationMenuItem>
+                      <Link to="/deployment" className={navigationMenuTriggerStyle()}>
+                        <Server className="mr-2 h-4 w-4" />
+                        Deployment
+                      </Link>
+                    </NavigationMenuItem>
+                  </NavigationMenuList>
+                </NavigationMenu>
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={toggleTheme} 
+                  className="rounded-full"
+                >
+                  {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </Button>
+              </div>
+            </header>
+            
+            <main className="flex-1">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/conveyor" element={<Index />} />
+                <Route path="/pulley" element={<PulleyDesign />} />
+                <Route path="/idler" element={<IdlerDesign />} />
+                <Route path="/deployment" element={<Deployment />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+          </div>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

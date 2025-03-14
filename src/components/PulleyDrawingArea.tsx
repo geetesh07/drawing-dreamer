@@ -22,6 +22,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<SVGSVGElement | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const isDarkMode = document.documentElement.classList.contains('dark');
   
   // Get container size on mount and window resize
   useEffect(() => {
@@ -40,13 +41,33 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     };
   }, []);
 
+  // Update on theme change
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class' && 
+            containerRef.current && 
+            containerSize.width > 0) {
+          // Redraw when theme changes
+          drawSvg();
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    
+    return () => {
+      observer.disconnect();
+    };
+  }, [containerSize, parameters, view]);
+
   // Format value with unit
   const formatWithUnit = (value: number, unit: string) => {
     return `${value} ${unit}`;
   };
 
   // Create or update SVG drawing
-  useEffect(() => {
+  const drawSvg = () => {
     if (!containerRef.current || containerSize.width === 0) return;
 
     // Clear previous drawing
@@ -100,6 +121,11 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     
     // Add grid background
     addGridBackground(newSvg, containerSize);
+  };
+
+  // Create or update SVG drawing
+  useEffect(() => {
+    drawSvg();
     
     return () => {
       if (containerRef.current) {
@@ -121,6 +147,9 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     const radius = scaledDiameter / 2;
     const boreRadius = scaledBoreDiameter / 2;
     const { unit } = originalParams;
+    const strokeColor = isDarkMode ? "#aaa" : "#333";
+    const textColor = isDarkMode ? "#ddd" : "#333";
+    const fillColor = isDarkMode ? "#222" : "white";
     
     // Create defs for shadows
     const defs = document.createElementNS(svgNS, "defs");
@@ -168,8 +197,8 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     outerCircle.setAttribute("cx", centerX.toString());
     outerCircle.setAttribute("cy", centerY.toString());
     outerCircle.setAttribute("r", radius.toString());
-    outerCircle.setAttribute("fill", "white");
-    outerCircle.setAttribute("stroke", "#333");
+    outerCircle.setAttribute("fill", fillColor);
+    outerCircle.setAttribute("stroke", strokeColor);
     outerCircle.setAttribute("stroke-width", "1.5");
     outerCircle.setAttribute("filter", "url(#shadow)");
     svg.appendChild(outerCircle);
@@ -180,7 +209,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     boreCircle.setAttribute("cy", centerY.toString());
     boreCircle.setAttribute("r", boreRadius.toString());
     boreCircle.setAttribute("fill", "none");
-    boreCircle.setAttribute("stroke", "#333");
+    boreCircle.setAttribute("stroke", strokeColor);
     boreCircle.setAttribute("stroke-width", "1.5");
     boreCircle.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(boreCircle);
@@ -194,7 +223,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     horDimLine.setAttribute("y1", dimLineY.toString());
     horDimLine.setAttribute("x2", (centerX + radius).toString());
     horDimLine.setAttribute("y2", dimLineY.toString());
-    horDimLine.setAttribute("stroke", "#333");
+    horDimLine.setAttribute("stroke", strokeColor);
     horDimLine.setAttribute("stroke-width", "1");
     svg.appendChild(horDimLine);
     
@@ -204,7 +233,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     extLine1.setAttribute("y1", centerY.toString());
     extLine1.setAttribute("x2", (centerX - radius).toString());
     extLine1.setAttribute("y2", dimLineY.toString());
-    extLine1.setAttribute("stroke", "#333");
+    extLine1.setAttribute("stroke", strokeColor);
     extLine1.setAttribute("stroke-width", "0.75");
     extLine1.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(extLine1);
@@ -214,7 +243,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     extLine2.setAttribute("y1", centerY.toString());
     extLine2.setAttribute("x2", (centerX + radius).toString());
     extLine2.setAttribute("y2", dimLineY.toString());
-    extLine2.setAttribute("stroke", "#333");
+    extLine2.setAttribute("stroke", strokeColor);
     extLine2.setAttribute("stroke-width", "0.75");
     extLine2.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(extLine2);
@@ -226,7 +255,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     diameterText.setAttribute("text-anchor", "middle");
     diameterText.setAttribute("font-family", "Inter, system-ui, sans-serif");
     diameterText.setAttribute("font-size", "12");
-    diameterText.setAttribute("fill", "#333");
+    diameterText.setAttribute("fill", textColor);
     diameterText.textContent = `Ø${originalParams.diameter} ${unit}`;
     svg.appendChild(diameterText);
     
@@ -237,7 +266,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     boreText.setAttribute("text-anchor", "middle");
     boreText.setAttribute("font-family", "Inter, system-ui, sans-serif");
     boreText.setAttribute("font-size", "12");
-    boreText.setAttribute("fill", "#333");
+    boreText.setAttribute("fill", textColor);
     
     // Add white background for text
     const boreTextBg = document.createElementNS(svgNS, "rect");
@@ -246,7 +275,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     boreTextBg.setAttribute("height", "16");
     boreTextBg.setAttribute("x", (centerX - textWidth/2).toString());
     boreTextBg.setAttribute("y", (centerY - 8).toString());
-    boreTextBg.setAttribute("fill", "white");
+    boreTextBg.setAttribute("fill", fillColor);
     boreTextBg.setAttribute("fill-opacity", "0.8");
     boreTextBg.setAttribute("rx", "2");
     boreTextBg.setAttribute("ry", "2");
@@ -270,113 +299,186 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     const radius = scaledDiameter / 2;
     const boreRadius = scaledBoreDiameter / 2;
     const { unit } = originalParams;
+    const strokeColor = isDarkMode ? "#aaa" : "#333";
+    const textColor = isDarkMode ? "#ddd" : "#333";
+    const fillColor = isDarkMode ? "#222" : "white";
+    const accentColor = "#3b82f6";
     
-    // Create pulley side view (rectangle with rounded ends)
-    const rectX = centerX - scaledThickness / 2;
-    const rectY = centerY - radius;
-    const rectHeight = scaledDiameter;
+    // Create a v-groove pulley or idler shape
+    const isIdler = window.location.pathname.includes('idler');
     
-    // Create path for rounded rectangle
-    const path = document.createElementNS(svgNS, "path");
-    const d = `
-      M ${rectX} ${rectY + radius}
-      L ${rectX} ${rectY + rectHeight - radius}
-      Q ${rectX} ${rectY + rectHeight} ${rectX + radius} ${rectY + rectHeight}
-      L ${rectX + scaledThickness - radius} ${rectY + rectHeight}
-      Q ${rectX + scaledThickness} ${rectY + rectHeight} ${rectX + scaledThickness} ${rectY + rectHeight - radius}
-      L ${rectX + scaledThickness} ${rectY + radius}
-      Q ${rectX + scaledThickness} ${rectY} ${rectX + scaledThickness - radius} ${rectY}
-      L ${rectX + radius} ${rectY}
-      Q ${rectX} ${rectY} ${rectX} ${rectY + radius}
-      Z
-    `;
-    path.setAttribute("d", d);
-    path.setAttribute("fill", "white");
-    path.setAttribute("stroke", "#333");
-    path.setAttribute("stroke-width", "1.5");
-    svg.appendChild(path);
-    
-    // Draw bore hole as vertical line
-    const boreLine = document.createElementNS(svgNS, "line");
-    boreLine.setAttribute("x1", centerX.toString());
-    boreLine.setAttribute("y1", (centerY - boreRadius).toString());
-    boreLine.setAttribute("x2", centerX.toString());
-    boreLine.setAttribute("y2", (centerY + boreRadius).toString());
-    boreLine.setAttribute("stroke", "#333");
-    boreLine.setAttribute("stroke-width", "1.5");
-    boreLine.setAttribute("stroke-dasharray", "4 2");
-    svg.appendChild(boreLine);
+    if (isIdler) {
+      // For idler: Draw a cylinder with rounded edges (no groove)
+      const cylinderPath = document.createElementNS(svgNS, "path");
+      
+      // Draw the cylinder outer shape
+      const cylinderTop = centerY - radius;
+      const cylinderBottom = centerY + radius;
+      const cylinderLeft = centerX - scaledThickness / 2;
+      const cylinderRight = centerX + scaledThickness / 2;
+      
+      // Create path for cylinder with rounded ends
+      const d = `
+        M ${cylinderLeft + radius} ${cylinderTop}
+        L ${cylinderRight - radius} ${cylinderTop}
+        A ${radius} ${radius} 0 0 1 ${cylinderRight - radius} ${cylinderBottom}
+        L ${cylinderLeft + radius} ${cylinderBottom}
+        A ${radius} ${radius} 0 0 1 ${cylinderLeft + radius} ${cylinderTop}
+        Z
+      `;
+      
+      cylinderPath.setAttribute("d", d);
+      cylinderPath.setAttribute("fill", fillColor);
+      cylinderPath.setAttribute("stroke", strokeColor);
+      cylinderPath.setAttribute("stroke-width", "1.5");
+      svg.appendChild(cylinderPath);
+      
+      // Draw the bore hole (center line)
+      const boreLine = document.createElementNS(svgNS, "line");
+      boreLine.setAttribute("x1", centerX.toString());
+      boreLine.setAttribute("y1", (centerY - boreRadius).toString());
+      boreLine.setAttribute("x2", centerX.toString());
+      boreLine.setAttribute("y2", (centerY + boreRadius).toString());
+      boreLine.setAttribute("stroke", strokeColor);
+      boreLine.setAttribute("stroke-width", "1.5");
+      boreLine.setAttribute("stroke-dasharray", "4 2");
+      svg.appendChild(boreLine);
+      
+    } else {
+      // For pulley: Draw a V-groove pulley
+      
+      // Main body rectangle
+      const rectX = centerX - scaledThickness / 2;
+      const rectY = centerY - radius;
+      const rectHeight = scaledDiameter;
+      
+      // Draw the outer shape (rectangle with rounded ends)
+      const pulleyPath = document.createElementNS(svgNS, "path");
+      
+      // Calculate V-groove parameters
+      const grooveDepth = Math.min(radius * 0.25, 15);
+      const grooveWidth = Math.min(scaledThickness * 0.5, grooveDepth * 2);
+      
+      // Create path for pulley with V-groove
+      const d = `
+        M ${rectX} ${rectY + radius}
+        L ${rectX} ${rectY + rectHeight - radius}
+        Q ${rectX} ${rectY + rectHeight} ${rectX + radius} ${rectY + rectHeight}
+        L ${rectX + scaledThickness - radius} ${rectY + rectHeight}
+        Q ${rectX + scaledThickness} ${rectY + rectHeight} ${rectX + scaledThickness} ${rectY + rectHeight - radius}
+        L ${rectX + scaledThickness} ${rectY + radius}
+        Q ${rectX + scaledThickness} ${rectY} ${rectX + scaledThickness - radius} ${rectY}
+        L ${rectX + radius} ${rectY}
+        Q ${rectX} ${rectY} ${rectX} ${rectY + radius}
+        Z
+      `;
+      
+      pulleyPath.setAttribute("d", d);
+      pulleyPath.setAttribute("fill", fillColor);
+      pulleyPath.setAttribute("stroke", strokeColor);
+      pulleyPath.setAttribute("stroke-width", "1.5");
+      svg.appendChild(pulleyPath);
+      
+      // Add V-groove
+      const groovePath = document.createElementNS(svgNS, "path");
+      const grooveX = centerX;
+      const grooveTopY = centerY - grooveDepth;
+      const grooveBottomY = centerY + grooveDepth;
+      
+      const grooveD = `
+        M ${grooveX - grooveWidth/2} ${grooveTopY}
+        L ${grooveX} ${centerY}
+        L ${grooveX + grooveWidth/2} ${grooveTopY}
+      `;
+      
+      groovePath.setAttribute("d", grooveD);
+      groovePath.setAttribute("fill", "none");
+      groovePath.setAttribute("stroke", accentColor);
+      groovePath.setAttribute("stroke-width", "1.5");
+      svg.appendChild(groovePath);
+      
+      // Draw the bore hole (center line)
+      const boreLine = document.createElementNS(svgNS, "line");
+      boreLine.setAttribute("x1", centerX.toString());
+      boreLine.setAttribute("y1", (centerY - boreRadius).toString());
+      boreLine.setAttribute("x2", centerX.toString());
+      boreLine.setAttribute("y2", (centerY + boreRadius).toString());
+      boreLine.setAttribute("stroke", strokeColor);
+      boreLine.setAttribute("stroke-width", "1.5");
+      boreLine.setAttribute("stroke-dasharray", "4 2");
+      svg.appendChild(boreLine);
+    }
     
     // Add thickness dimension
     const thicknessLabel = document.createElementNS(svgNS, "text");
     thicknessLabel.setAttribute("x", centerX.toString());
-    thicknessLabel.setAttribute("y", (rectY - 15).toString());
+    thicknessLabel.setAttribute("y", (centerY - radius - 15).toString());
     thicknessLabel.setAttribute("text-anchor", "middle");
     thicknessLabel.setAttribute("font-family", "Inter, system-ui, sans-serif");
     thicknessLabel.setAttribute("font-size", "12");
-    thicknessLabel.setAttribute("fill", "#333");
+    thicknessLabel.setAttribute("fill", textColor);
     thicknessLabel.textContent = `${originalParams.thickness} ${unit}`;
     svg.appendChild(thicknessLabel);
     
     // Draw thickness dimension line
     const thicknessDimLine = document.createElementNS(svgNS, "line");
-    thicknessDimLine.setAttribute("x1", rectX.toString());
-    thicknessDimLine.setAttribute("y1", (rectY - 5).toString());
-    thicknessDimLine.setAttribute("x2", (rectX + scaledThickness).toString());
-    thicknessDimLine.setAttribute("y2", (rectY - 5).toString());
-    thicknessDimLine.setAttribute("stroke", "#333");
+    thicknessDimLine.setAttribute("x1", (centerX - scaledThickness/2).toString());
+    thicknessDimLine.setAttribute("y1", (centerY - radius - 5).toString());
+    thicknessDimLine.setAttribute("x2", (centerX + scaledThickness/2).toString());
+    thicknessDimLine.setAttribute("y2", (centerY - radius - 5).toString());
+    thicknessDimLine.setAttribute("stroke", strokeColor);
     thicknessDimLine.setAttribute("stroke-width", "1");
     svg.appendChild(thicknessDimLine);
     
     // Add thickness extension lines
     const thicknessExtLine1 = document.createElementNS(svgNS, "line");
-    thicknessExtLine1.setAttribute("x1", rectX.toString());
-    thicknessExtLine1.setAttribute("y1", rectY.toString());
-    thicknessExtLine1.setAttribute("x2", rectX.toString());
-    thicknessExtLine1.setAttribute("y2", (rectY - 5).toString());
-    thicknessExtLine1.setAttribute("stroke", "#333");
+    thicknessExtLine1.setAttribute("x1", (centerX - scaledThickness/2).toString());
+    thicknessExtLine1.setAttribute("y1", centerY - radius);
+    thicknessExtLine1.setAttribute("x2", (centerX - scaledThickness/2).toString());
+    thicknessExtLine1.setAttribute("y2", (centerY - radius - 5).toString());
+    thicknessExtLine1.setAttribute("stroke", strokeColor);
     thicknessExtLine1.setAttribute("stroke-width", "0.75");
     thicknessExtLine1.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(thicknessExtLine1);
     
     const thicknessExtLine2 = document.createElementNS(svgNS, "line");
-    thicknessExtLine2.setAttribute("x1", (rectX + scaledThickness).toString());
-    thicknessExtLine2.setAttribute("y1", rectY.toString());
-    thicknessExtLine2.setAttribute("x2", (rectX + scaledThickness).toString());
-    thicknessExtLine2.setAttribute("y2", (rectY - 5).toString());
-    thicknessExtLine2.setAttribute("stroke", "#333");
+    thicknessExtLine2.setAttribute("x1", (centerX + scaledThickness/2).toString());
+    thicknessExtLine2.setAttribute("y1", centerY - radius);
+    thicknessExtLine2.setAttribute("x2", (centerX + scaledThickness/2).toString());
+    thicknessExtLine2.setAttribute("y2", (centerY - radius - 5).toString());
+    thicknessExtLine2.setAttribute("stroke", strokeColor);
     thicknessExtLine2.setAttribute("stroke-width", "0.75");
     thicknessExtLine2.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(thicknessExtLine2);
     
     // Add height dimension on the side
     const heightDimLine = document.createElementNS(svgNS, "line");
-    const dimLineX = rectX - 20;
+    const dimLineX = centerX - scaledThickness/2 - 20;
     heightDimLine.setAttribute("x1", dimLineX.toString());
-    heightDimLine.setAttribute("y1", rectY.toString());
+    heightDimLine.setAttribute("y1", centerY - radius);
     heightDimLine.setAttribute("x2", dimLineX.toString());
-    heightDimLine.setAttribute("y2", (rectY + rectHeight).toString());
-    heightDimLine.setAttribute("stroke", "#333");
+    heightDimLine.setAttribute("y2", centerY + radius);
+    heightDimLine.setAttribute("stroke", strokeColor);
     heightDimLine.setAttribute("stroke-width", "1");
     svg.appendChild(heightDimLine);
     
     // Add height extension lines
     const heightExtLine1 = document.createElementNS(svgNS, "line");
-    heightExtLine1.setAttribute("x1", rectX.toString());
-    heightExtLine1.setAttribute("y1", rectY.toString());
+    heightExtLine1.setAttribute("x1", centerX - scaledThickness/2);
+    heightExtLine1.setAttribute("y1", centerY - radius);
     heightExtLine1.setAttribute("x2", dimLineX.toString());
-    heightExtLine1.setAttribute("y2", rectY.toString());
-    heightExtLine1.setAttribute("stroke", "#333");
+    heightExtLine1.setAttribute("y2", centerY - radius);
+    heightExtLine1.setAttribute("stroke", strokeColor);
     heightExtLine1.setAttribute("stroke-width", "0.75");
     heightExtLine1.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(heightExtLine1);
     
     const heightExtLine2 = document.createElementNS(svgNS, "line");
-    heightExtLine2.setAttribute("x1", rectX.toString());
-    heightExtLine2.setAttribute("y1", (rectY + rectHeight).toString());
+    heightExtLine2.setAttribute("x1", centerX - scaledThickness/2);
+    heightExtLine2.setAttribute("y1", centerY + radius);
     heightExtLine2.setAttribute("x2", dimLineX.toString());
-    heightExtLine2.setAttribute("y2", (rectY + rectHeight).toString());
-    heightExtLine2.setAttribute("stroke", "#333");
+    heightExtLine2.setAttribute("y2", centerY + radius);
+    heightExtLine2.setAttribute("stroke", strokeColor);
     heightExtLine2.setAttribute("stroke-width", "0.75");
     heightExtLine2.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(heightExtLine2);
@@ -384,12 +486,12 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     // Add height dimension text
     const heightText = document.createElementNS(svgNS, "text");
     heightText.setAttribute("x", (dimLineX - 10).toString());
-    heightText.setAttribute("y", (rectY + rectHeight/2).toString());
+    heightText.setAttribute("y", centerY.toString());
     heightText.setAttribute("text-anchor", "middle");
     heightText.setAttribute("font-family", "Inter, system-ui, sans-serif");
     heightText.setAttribute("font-size", "12");
-    heightText.setAttribute("fill", "#333");
-    heightText.setAttribute("transform", `rotate(-90 ${dimLineX - 10} ${rectY + rectHeight/2})`);
+    heightText.setAttribute("fill", textColor);
+    heightText.setAttribute("transform", `rotate(-90 ${dimLineX - 10} ${centerY})`);
     heightText.textContent = `Ø${originalParams.diameter} ${unit}`;
     svg.appendChild(heightText);
   };
@@ -397,6 +499,8 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
   // Add grid background to drawing
   const addGridBackground = (svg: SVGSVGElement, containerSize: { width: number; height: number }) => {
     const svgNS = "http://www.w3.org/2000/svg";
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const gridColor = isDarkMode ? "rgba(50, 50, 50, 0.3)" : "rgba(240, 240, 240, 0.3)";
     
     // Create pattern definition for grid
     const defs = document.createElementNS(svgNS, "defs");
@@ -415,7 +519,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     hLine.setAttribute("y1", "20");
     hLine.setAttribute("x2", "20");
     hLine.setAttribute("y2", "20");
-    hLine.setAttribute("stroke", "#f0f0f0");
+    hLine.setAttribute("stroke", gridColor);
     hLine.setAttribute("stroke-width", "0.5");
     pattern.appendChild(hLine);
     
@@ -425,7 +529,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     vLine.setAttribute("y1", "0");
     vLine.setAttribute("x2", "20");
     vLine.setAttribute("y2", "20");
-    vLine.setAttribute("stroke", "#f0f0f0");
+    vLine.setAttribute("stroke", gridColor);
     vLine.setAttribute("stroke-width", "0.5");
     pattern.appendChild(vLine);
     
@@ -442,7 +546,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
   return (
     <div 
       ref={containerRef} 
-      className={`min-h-[500px] bg-white drawing-container ${className}`}
+      className={`min-h-[500px] drawing-container ${className}`}
       style={{ transition: "all 0.3s ease" }}
     />
   );

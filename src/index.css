@@ -119,11 +119,11 @@
   }
   
   .drawing-container {
-    @apply border border-border rounded-lg shadow-soft bg-white overflow-hidden transition-all;
+    @apply border border-border rounded-lg shadow-soft dark:bg-background/30 bg-white overflow-hidden transition-all;
   }
   
   .control-panel {
-    @apply bg-white/80 backdrop-blur-sm rounded-lg border border-border p-5 shadow-soft;
+    @apply bg-white/80 dark:bg-background/30 backdrop-blur-sm rounded-lg border border-border p-5 shadow-soft;
   }
   
   .view-btn {
@@ -150,7 +150,7 @@
 
 /* Glass effect */
 .glass-panel {
-  @apply bg-white/70 backdrop-blur-sm border border-white/20 shadow-soft;
+  @apply bg-white/70 dark:bg-black/20 backdrop-blur-sm border border-white/20 dark:border-white/10 shadow-soft;
 }
 
 .glass-panel-dark {
@@ -163,6 +163,12 @@
   background-image: 
     linear-gradient(to right, rgba(240, 240, 240, 0.3) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(240, 240, 240, 0.3) 1px, transparent 1px);
+}
+
+.dark .drawing-grid {
+  background-image: 
+    linear-gradient(to right, rgba(50, 50, 50, 0.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(50, 50, 50, 0.3) 1px, transparent 1px);
 }
 
 /* Transitions for view changes */
@@ -186,4 +192,26 @@
   opacity: 0;
   transform: translateY(-10px);
   transition: opacity 300ms, transform 300ms;
+}
+
+/* Additional theme transitions */
+.theme-transition {
+  @apply transition-colors duration-300;
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+}
+
+/* Updated control panel styling */
+.modern-input {
+  @apply bg-white/50 dark:bg-black/20 border border-border rounded-md px-3 py-2 
+  focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50
+  placeholder:text-muted-foreground;
+}
+
+/* Hero section styling */
+.hero-gradient {
+  @apply bg-gradient-to-br from-primary/10 via-background to-background dark:from-primary/20 dark:via-background dark:to-background;
 }

@@ -63,7 +63,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-5">
         <div className="space-y-1.5">
           <Label htmlFor="width" className="control-label">
-            Width
+            Length
           </Label>
           <Input
             id="width"
@@ -78,7 +78,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         
         <div className="space-y-1.5">
           <Label htmlFor="height" className="control-label">
-            Height
+            Width
           </Label>
           <Input
             id="height"

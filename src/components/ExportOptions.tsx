@@ -68,30 +68,45 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      // Calculate scaling to fit the drawing
-      const scaleFactor = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height) * 0.9;
+      // Load the template image (from public folder)
+      const template = new Image();
+      template.src = 'public/lovable-uploads/d20f33ee-b15d-4653-98ef-a6adddd18558.png';
+      
+      // First add the template image
+      pdf.addImage('public/lovable-uploads/d20f33ee-b15d-4653-98ef-a6adddd18558.png', 'PNG', 0, 0, pdfWidth, pdfHeight);
+      
+      // Calculate the drawing area based on the template
+      // These values need to be adjusted based on the template
+      const drawingAreaX = pdfWidth * 0.15; // 15% from left margin
+      const drawingAreaY = pdfHeight * 0.2; // 20% from top margin
+      const drawingAreaWidth = pdfWidth * 0.7; // 70% of page width 
+      const drawingAreaHeight = pdfHeight * 0.6; // 60% of page height
+      
+      // Calculate scaling to fit the drawing in the drawing area
+      const scaleFactor = Math.min(
+        drawingAreaWidth / canvas.width,
+        drawingAreaHeight / canvas.height
+      ) * 0.9; // 90% of available space to leave some margin
+      
       const scaledWidth = canvas.width * scaleFactor;
       const scaledHeight = canvas.height * scaleFactor;
       
-      // Center the drawing on the PDF
-      const x = (pdfWidth - scaledWidth) / 2;
-      const y = (pdfHeight - scaledHeight) / 2;
+      // Center the drawing in the drawing area
+      const x = drawingAreaX + (drawingAreaWidth - scaledWidth) / 2;
+      const y = drawingAreaY + (drawingAreaHeight - scaledHeight) / 2;
       
-      // Add the drawing to the PDF
+      // Add the drawing to the PDF (on top of the template)
       pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
       
       // Add metadata
       const { width, height, cornerRadius, depth, unit } = dimensions;
       const date = new Date().toLocaleDateString();
       
-      // Add footer with dimensions
-      pdf.setFontSize(10);
-      pdf.text(
-        `Production Drawing - ${width}x${height}x${depth} ${unit} - R${cornerRadius} ${unit} - Generated on ${date}`, 
-        pdfWidth / 2, 
-        pdfHeight - 10, 
-        { align: 'center' }
-      );
+      // Add company info at correct position
+      pdf.setFontSize(9);
+      pdf.text(`Customer: Drawing Generator Demo`, pdfWidth * 0.8, pdfHeight * 0.83);
+      pdf.text(`Part: ${width}×${height}×${depth} ${unit}`, pdfWidth * 0.8, pdfHeight * 0.86);
+      pdf.text(`Date: ${date}`, pdfWidth * 0.8, pdfHeight * 0.89);
       
       // Save the PDF
       pdf.save(`production_drawing_${width}x${height}R${cornerRadius}${unit}.pdf`);

@@ -10,9 +10,9 @@ import PulleyDesign from "./pages/PulleyDesign";
 import IdlerDesign from "./pages/IdlerDesign";
 import Deployment from "./pages/Deployment";
 import NotFound from "./pages/NotFound";
-import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
+import { NavigationMenu, NavigationMenuItem, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { Link } from "react-router-dom";
-import { BriefcaseConveyorBelt, Circle, Home as HomeIcon, Ruler, Moon, Sun, Server } from "lucide-react";
+import { BriefcaseConveyorBelt, Circle, DesktopTower, Home as HomeIcon, Ruler, Moon, Sun, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./hooks/useTheme";
 import { useEffect } from "react";
@@ -78,9 +78,12 @@ const App = () => {
                   variant="ghost" 
                   size="icon" 
                   onClick={toggleTheme} 
-                  className="rounded-full"
+                  className="rounded-full hover:bg-secondary"
                 >
                   {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                  <span className="sr-only">
+                    {theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+                  </span>
                 </Button>
               </div>
             </header>

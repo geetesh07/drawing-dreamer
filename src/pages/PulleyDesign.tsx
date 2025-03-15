@@ -52,8 +52,8 @@ const PulleyDrawingArea: React.FC<{
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Set canvas dimensions - increased significantly for better use of space
-    const canvasSize = 1200; // Increased for much larger drawings
+    // Set canvas dimensions - increased for better resolution
+    const canvasSize = 1000; 
     canvas.width = canvasSize;
     canvas.height = canvasSize;
     
@@ -61,9 +61,9 @@ const PulleyDrawingArea: React.FC<{
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
     
-    // Calculate scale to fit drawing in canvas - reduced scaling factor to make drawing larger
-    const maxDimension = Math.max(parameters.diameter, parameters.thickness) * 1.2; // Reduced scaling factor
-    const scale = (canvasSize * 0.6) / maxDimension; // Increased from 0.8 to 0.6 to make drawing larger
+    // Calculate scale to fit drawing in canvas
+    const maxDimension = Math.max(parameters.diameter, parameters.thickness) * 1.5;
+    const scale = (canvasSize * 0.5) / maxDimension;
     
     // Center point of canvas
     const centerX = canvasSize / 2;
@@ -77,7 +77,7 @@ const PulleyDrawingArea: React.FC<{
     }
   }, [parameters, view]);
 
-  // Draw front view (formerly top view)
+  // Draw front view (top view)
   const drawTopView = (
     ctx: CanvasRenderingContext2D,
     centerX: number,
@@ -86,20 +86,20 @@ const PulleyDrawingArea: React.FC<{
     parameters: PulleyParameters,
     canvasSize: number
   ) => {
-    const { diameter, boreDiameter, innerDiameter, keyWayWidth, keyWayDepth } = parameters;
+    const { diameter, boreDiameter, innerDiameter } = parameters;
     
     // Draw with improved quality
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     
-    // Draw outer circle with higher quality
+    // Draw outer circle
     ctx.beginPath();
     ctx.arc(centerX, centerY, (diameter / 2) * scale, 0, Math.PI * 2);
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 2.5;
     ctx.stroke();
     
-    // Draw inner diameter circle (where V taper extends to) with higher quality
+    // Draw inner diameter circle (where V taper extends to)
     ctx.beginPath();
     ctx.arc(centerX, centerY, (innerDiameter / 2) * scale, 0, Math.PI * 2);
     ctx.strokeStyle = "#555";
@@ -108,41 +108,21 @@ const PulleyDrawingArea: React.FC<{
     ctx.stroke();
     ctx.setLineDash([]);
     
-    // Calculate keyway and bore parameters
-    const keyWayWidth2 = keyWayWidth * scale;
+    // Draw bore circle
     const boreRadius = (boreDiameter / 2) * scale;
-    
-    // Draw complete bore circle with higher quality
     ctx.beginPath();
     ctx.arc(centerX, centerY, boreRadius, 0, Math.PI * 2);
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 1.5; // Better quality line
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // Draw keyway shape on top
-    ctx.beginPath();
-    ctx.rect(centerX - keyWayWidth2/2, centerY - boreRadius - keyWayDepth * scale, keyWayWidth2, keyWayDepth * scale);
-    ctx.fillStyle = "#FFF"; // Fill with white to "erase" part of the circle
-    ctx.fill();
+    // NO KEYWAY drawing in this view - removed as requested
     
-    // Redraw keyway outline - thinner
-    ctx.beginPath();
-    // Left side of keyway
-    ctx.moveTo(centerX - keyWayWidth2/2, centerY - boreRadius);
-    ctx.lineTo(centerX - keyWayWidth2/2, centerY - boreRadius - keyWayDepth * scale);
-    // Top of keyway
-    ctx.lineTo(centerX + keyWayWidth2/2, centerY - boreRadius - keyWayDepth * scale);
-    // Right side of keyway
-    ctx.lineTo(centerX + keyWayWidth2/2, centerY - boreRadius);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 1; // Thinner line
-    ctx.stroke();
-    
-    // Draw dimension lines
+    // Draw dimension lines with improved spacing
     drawDimensionLines(ctx, centerX, centerY, scale, "top", parameters, canvasSize);
   };
 
-  // Draw side view (vertical orientation) with improved quality
+  // Draw side view with improved V-groove
   const drawSideView = (
     ctx: CanvasRenderingContext2D,
     centerX: number,
@@ -151,7 +131,7 @@ const PulleyDrawingArea: React.FC<{
     parameters: PulleyParameters,
     canvasSize: number
   ) => {
-    const { diameter, thickness, boreDiameter, innerDiameter, grooveDepth, grooveWidth, keyWayWidth, keyWayDepth } = parameters;
+    const { diameter, thickness, boreDiameter, innerDiameter, grooveWidth } = parameters;
     
     // Configure for high quality lines
     ctx.lineCap = "round";
@@ -162,7 +142,6 @@ const PulleyDrawingArea: React.FC<{
     const innerRadius = (innerDiameter / 2) * scale;
     const pulleyThickness = thickness * scale;
     const boreRadius = (boreDiameter / 2) * scale;
-    const grooveDepthScaled = grooveDepth * scale;
     const grooveWidthScaled = grooveWidth * scale;
     
     // Calculate positions (for vertical orientation)
@@ -171,7 +150,7 @@ const PulleyDrawingArea: React.FC<{
     const topY = centerY - pulleyRadius;
     const bottomY = centerY + pulleyRadius;
     
-    // Draw main body outline with higher quality
+    // Draw main body outline
     ctx.beginPath();
     ctx.moveTo(leftX, topY); // Top left
     ctx.lineTo(leftX, bottomY); // Bottom left
@@ -179,32 +158,32 @@ const PulleyDrawingArea: React.FC<{
     ctx.lineTo(rightX, topY); // Top right
     ctx.lineTo(leftX, topY); // Back to top left
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2.5; // Increased for better quality
+    ctx.lineWidth = 2.5;
     ctx.stroke();
     
-    // Draw the V-groove with proper inward taper with higher quality
+    // Improved V-groove with tapered inward profile - more pronounced
     const grooveLeft = centerX - grooveWidthScaled / 2;
     const grooveRight = centerX + grooveWidthScaled / 2;
     
-    // Top side V-groove - inward taper with higher quality
+    // Top side V-groove - deeper taper
     ctx.beginPath();
     ctx.moveTo(grooveLeft, topY);
     ctx.lineTo(centerX, centerY - innerRadius);
     ctx.lineTo(grooveRight, topY);
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2.5; // Increased for better quality
+    ctx.lineWidth = 2;
     ctx.stroke();
     
-    // Bottom side V-groove - inward taper with higher quality
+    // Bottom side V-groove - deeper taper
     ctx.beginPath();
     ctx.moveTo(grooveLeft, bottomY);
     ctx.lineTo(centerX, centerY + innerRadius);
     ctx.lineTo(grooveRight, bottomY);
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2.5; // Increased for better quality
+    ctx.lineWidth = 2;
     ctx.stroke();
     
-    // Draw inner diameter outline with improved quality
+    // Draw inner diameter outline
     ctx.beginPath();
     ctx.moveTo(leftX, centerY - innerRadius);
     ctx.lineTo(rightX, centerY - innerRadius);
@@ -212,10 +191,10 @@ const PulleyDrawingArea: React.FC<{
     ctx.lineTo(rightX, centerY + innerRadius);
     ctx.strokeStyle = "#555";
     ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]); // Better dash pattern
+    ctx.setLineDash([6, 4]);
     ctx.stroke();
     
-    // Draw bore (shaft hole) with improved quality
+    // Draw bore (shaft hole)
     ctx.beginPath();
     ctx.moveTo(leftX, centerY - boreRadius);
     ctx.lineTo(rightX, centerY - boreRadius);
@@ -223,28 +202,17 @@ const PulleyDrawingArea: React.FC<{
     ctx.lineTo(rightX, centerY + boreRadius);
     ctx.strokeStyle = "#222";
     ctx.lineWidth = 1.5; 
-    ctx.setLineDash([6, 4]); // Better dash pattern
+    ctx.setLineDash([6, 4]);
     ctx.stroke();
-    
-    // Draw keyway with improved quality
-    const keyWayWidthScaled = keyWayWidth * scale;
-    const keyWayDepthScaled = keyWayDepth * scale;
-    
-    ctx.beginPath();
-    ctx.moveTo(centerX - keyWayWidthScaled/2, centerY - boreRadius);
-    ctx.lineTo(centerX - keyWayWidthScaled/2, centerY - boreRadius - keyWayDepthScaled);
-    ctx.lineTo(centerX + keyWayWidthScaled/2, centerY - boreRadius - keyWayDepthScaled);
-    ctx.lineTo(centerX + keyWayWidthScaled/2, centerY - boreRadius);
-    ctx.strokeStyle = "#222";
-    ctx.lineWidth = 1.5;
     ctx.setLineDash([]);
-    ctx.stroke();
     
-    // Draw dimension lines (vertical orientation)
+    // NO KEYWAY drawing in side view - removed as requested
+    
+    // Draw dimension lines with improved spacing that doesn't overlap
     drawDimensionLines(ctx, centerX, centerY, scale, "side", parameters, canvasSize);
   };
 
-  // Draw dimension lines
+  // Improved dimension lines that don't overlap
   const drawDimensionLines = (
     ctx: CanvasRenderingContext2D,
     centerX: number,
@@ -254,15 +222,15 @@ const PulleyDrawingArea: React.FC<{
     parameters: PulleyParameters,
     canvasSize: number
   ) => {
-    const { diameter, thickness, boreDiameter, innerDiameter } = parameters;
+    const { diameter, thickness, boreDiameter, innerDiameter, unit } = parameters;
     
-    // Draw arrow with improved style for better visibility
+    // Draw arrow with improved visibility
     const drawArrow = (
       fromX: number, 
       fromY: number, 
       angle: number,
-      arrowLength: number = 15,
-      arrowWidth: number = Math.PI/7
+      arrowLength: number = 10,
+      arrowWidth: number = Math.PI/8
     ) => {
       ctx.beginPath();
       ctx.moveTo(fromX, fromY);
@@ -278,7 +246,7 @@ const PulleyDrawingArea: React.FC<{
       ctx.stroke();
     };
     
-    // Draw a dimension line with leader lines and arrows - reduced spacing
+    // Draw a dimension line with greatly improved spacing
     const drawDimension = (
       startX: number, 
       startY: number, 
@@ -286,8 +254,8 @@ const PulleyDrawingArea: React.FC<{
       endY: number, 
       labelText: string, 
       labelPosition: "top" | "bottom" | "left" | "right" | "middle" = "top",
-      extensionLength: number = 60, // Reduced from 120 to 60
-      extensionGap: number = 15    // Reduced from 20 to 15
+      extensionLength: number = 40,
+      extensionGap: number = 10
     ) => {
       const angle = Math.atan2(endY - startY, endX - startX);
       const perpAngle = angle + Math.PI/2;
@@ -311,7 +279,7 @@ const PulleyDrawingArea: React.FC<{
         endExtY + extensionLength * Math.sin(perpAngle)
       );
       ctx.strokeStyle = "#666";
-      ctx.lineWidth = 1.2; // Thicker for better visibility
+      ctx.lineWidth = 1;
       ctx.stroke();
       
       // Dimension line with arrows
@@ -325,24 +293,20 @@ const PulleyDrawingArea: React.FC<{
       ctx.moveTo(dimLineStartX, dimLineStartY);
       ctx.lineTo(dimLineEndX, dimLineEndY);
       ctx.strokeStyle = "#444";
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1;
       ctx.stroke();
       
-      // Draw arrowheads using the helper function
-      const arrowLength = 15; // Increased for better visibility
-      
-      // Start arrow
+      // Draw arrowheads
+      const arrowLength = 10;
       ctx.strokeStyle = "#444";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.2;
       drawArrow(dimLineStartX, dimLineStartY, angle + Math.PI, arrowLength);
-      
-      // End arrow
       drawArrow(dimLineEndX, dimLineEndY, angle, arrowLength);
       
       // Calculate the center point for the label
       let labelX = (dimLineStartX + dimLineEndX) / 2;
       let labelY = (dimLineStartY + dimLineEndY) / 2;
-      const labelOffset = 10; // Increased offset
+      const labelOffset = 7;
       
       // Position the label
       switch(labelPosition) {
@@ -361,33 +325,31 @@ const PulleyDrawingArea: React.FC<{
           ctx.textAlign = "left";
           break;
         case "middle":
-          // Center of the dimension line
           ctx.textAlign = "center";
           break;
       }
       
-      // Draw text with more reasonable font size
-      ctx.fillStyle = "#000"; // Black for maximum contrast
-      ctx.font = "bold 14px Arial"; // Reduced from 18px to 14px
+      // Draw background for text to ensure visibility
+      const textWidth = ctx.measureText(labelText).width;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.fillRect(labelX - textWidth/2 - 3, labelY - 6, textWidth + 6, 12);
+      
+      // Draw text
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 12px Arial";
       ctx.textBaseline = "middle";
-      // Draw text with slight shadow for better visibility
-      ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-      ctx.shadowBlur = 2; // Reduced from 3 to 2
-      ctx.shadowOffsetX = 0.5;
-      ctx.shadowOffsetY = 0.5;
       ctx.fillText(labelText, labelX, labelY);
-      ctx.shadowColor = "transparent"; // Reset shadow
       ctx.textAlign = "left"; // Reset text alignment
     };
     
-    // Leader line with text for circular features - reduced spacing
+    // Leader line with text for circular features
     const drawLeader = (
       circleX: number, 
       circleY: number, 
       radius: number, 
       labelText: string, 
       angle: number,
-      leaderLength: number = 100 // Reduced from 200 to 100 for more compact dimensions
+      leaderLength: number = 60
     ) => {
       // Calculate point on circle
       const startX = circleX + radius * Math.cos(angle);
@@ -402,19 +364,19 @@ const PulleyDrawingArea: React.FC<{
       ctx.moveTo(startX, startY);
       ctx.lineTo(endX, endY);
       ctx.strokeStyle = "#444";
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1;
       ctx.stroke();
       
-      // Draw arrow at circle end using the helper function
-      const arrowLength = 15; // Larger arrows
+      // Draw arrow at circle end
+      const arrowLength = 10;
       ctx.strokeStyle = "#444";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.2;
       drawArrow(startX, startY, angle + Math.PI, arrowLength);
       
-      // Position text based on angle quadrant with improved spacing
+      // Position text
       let textX = endX;
       let textY = endY;
-      const textOffset = 12; // Increased offset
+      const textOffset = 8;
       
       if (angle > -Math.PI/4 && angle < Math.PI/4) {
         // Right side
@@ -422,7 +384,7 @@ const PulleyDrawingArea: React.FC<{
         ctx.textAlign = "left";
       } else if (angle >= Math.PI/4 && angle < 3*Math.PI/4) {
         // Bottom side
-        textY += textOffset + 5;
+        textY += textOffset;
         ctx.textAlign = "center";
       } else if ((angle >= 3*Math.PI/4 && angle <= Math.PI) || (angle <= -3*Math.PI/4 && angle >= -Math.PI)) {
         // Left side
@@ -434,110 +396,79 @@ const PulleyDrawingArea: React.FC<{
         ctx.textAlign = "center";
       }
       
-      // Draw text with more reasonable font size
-      ctx.fillStyle = "#000"; // Black for maximum contrast
-      ctx.font = "bold 14px Arial"; // Reduced from 18px to 14px
+      // Draw background for text
+      const textWidth = ctx.measureText(labelText).width;
+      const bgPadding = 4;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      if (ctx.textAlign === "center") {
+        ctx.fillRect(textX - textWidth/2 - bgPadding, textY - 8, textWidth + bgPadding*2, 16);
+      } else if (ctx.textAlign === "right") {
+        ctx.fillRect(textX - textWidth - bgPadding, textY - 8, textWidth + bgPadding*2, 16);
+      } else {
+        ctx.fillRect(textX - bgPadding, textY - 8, textWidth + bgPadding*2, 16);
+      }
+      
+      // Draw text
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 12px Arial";
       ctx.textBaseline = "middle";
-      // Draw text with slight shadow for better visibility
-      ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-      ctx.shadowBlur = 2; // Reduced from 3 to 2
-      ctx.shadowOffsetX = 0.5;
-      ctx.shadowOffsetY = 0.5;
       ctx.fillText(labelText, textX, textY);
-      ctx.shadowColor = "transparent"; // Reset shadow
       ctx.textAlign = "left"; // Reset alignment
     };
     
-    // Calculate the optimal angles and lengths for dimension lines to avoid overlap
-    const calculateOptimalPlacement = (baseAngle: number, index: number, total: number, radius: number) => {
-      // For front view, space out the angle based on the index
-      const angleRange = Math.PI * 1.6; // Use most of the circle except the bottom
-      const angleStep = angleRange / (total + 1);
-      const angle = baseAngle + angleStep * (index + 1);
-      
-      // Calculate appropriate leader length based on radius but with lower values
-      // We need shorter lines to keep dimensions closer to the drawing
-      const baseLengthFactor = 1.5; // Reduced from 2.5 to 1.5
-      const lengthVariation = 0.3; // Reduced from 0.5 to 0.3
-      const lengthFactor = baseLengthFactor - (index * lengthVariation);
-      
-      // Calculate leader length - proportional to radius but with lower minimum
-      const leaderLength = Math.max(radius * lengthFactor, 90); // Reduced from 150 to 90
-      
-      return { angle, leaderLength };
-    };
-    
     if (view === "top") {
-      // Front view dimensions with dynamic placement
-      const elements = [
-        { radius: (diameter/2) * scale, label: `Ø${diameter}` },
-        { radius: (innerDiameter/2) * scale, label: `Ø${innerDiameter}` },
-        { radius: (boreDiameter/2) * scale, label: `Ø${boreDiameter}` }
-      ];
-      
-      // Sort from largest to smallest radius
-      elements.sort((a, b) => b.radius - a.radius);
-      
-      // Base angle for starting the placement
-      const baseAngle = Math.PI * 0.1;
-      
-      // Draw leaders with optimal placement
-      elements.forEach((element, i) => {
-        const { angle, leaderLength } = calculateOptimalPlacement(baseAngle, i, elements.length, element.radius);
-        drawLeader(centerX, centerY, element.radius, element.label, angle, leaderLength);
-      });
+      // Front view dimensions with optimized spacing
+      // Using different angles to prevent overlapping
+      drawLeader(centerX, centerY, (diameter/2) * scale, `Ø${diameter} ${unit}`, Math.PI * 0.25, 80);
+      drawLeader(centerX, centerY, (innerDiameter/2) * scale, `Ø${innerDiameter} ${unit}`, Math.PI * 0.75, 70);
+      drawLeader(centerX, centerY, (boreDiameter/2) * scale, `Ø${boreDiameter} ${unit}`, Math.PI * 1.25, 60);
     } else {
-      // Side view - dynamically place dimensions
+      // Side view with optimized spacing
       const diameterRadius = (diameter/2) * scale;
       const innerRadius = (innerDiameter/2) * scale;
       const boreRadius = (boreDiameter/2) * scale;
       const pulleyThickness = thickness * scale;
       
-      // Calculate horizontal and vertical spacing factors based on canvas size - reduced
-      const hSpacing = canvasSize * 0.04; // Reduced from 6% to 4% of canvas size
-      const vSpacing = canvasSize * 0.08; // Reduced from 15% to 8% of canvas size
+      // Create much more space between dimensions
+      const hSpacing = canvasSize * 0.08; // 8% spacing
+      const rightSide1 = centerX + pulleyThickness/2 + hSpacing;
+      const rightSide2 = rightSide1 + hSpacing * 0.7;
+      const leftSide = centerX - pulleyThickness/2 - hSpacing;
       
-      // Thickness - place at the TOP with reduced spacing
+      // Thickness at top with good spacing
       drawDimension(
-        centerX - pulleyThickness/2, centerY - diameterRadius - vSpacing,
-        centerX + pulleyThickness/2, centerY - diameterRadius - vSpacing,
-        `${thickness}`,
+        centerX - pulleyThickness/2, centerY - diameterRadius - hSpacing*0.5,
+        centerX + pulleyThickness/2, centerY - diameterRadius - hSpacing*0.5,
+        `${thickness} ${unit}`,
         "top",
-        40 // Reduced from 80 to 40
+        30 // Shorter extension
       );
       
-      // Calculate right side spacing to avoid overlap but keep closer
-      const rightSideSpacing1 = centerX + pulleyThickness/2 + hSpacing;
-      const rightSideSpacing2 = centerX + pulleyThickness/2 + hSpacing * 1.8; // Reduced from 2.5 to 1.8
-      
-      // Outer diameter - place on RIGHT with reduced spacing
+      // Outer diameter on right
       drawDimension(
-        rightSideSpacing1, centerY - diameterRadius,
-        rightSideSpacing1, centerY + diameterRadius,
-        `Ø${diameter}`,
+        rightSide1, centerY - diameterRadius,
+        rightSide1, centerY + diameterRadius,
+        `Ø${diameter} ${unit}`,
         "right",
-        50 // Reduced from 120 to 50
+        30
       );
       
-      // Inner diameter - place on RIGHT with reduced spacing
+      // Inner diameter on far right
       drawDimension(
-        rightSideSpacing2, centerY - innerRadius,
-        rightSideSpacing2, centerY + innerRadius,
-        `Ø${innerDiameter}`,
+        rightSide2, centerY - innerRadius,
+        rightSide2, centerY + innerRadius,
+        `Ø${innerDiameter} ${unit}`,
         "right",
-        40 // Reduced from 80 to 40
+        25
       );
       
-      // Calculate left side spacing to keep dimensions closer
-      const leftSideSpacing = centerX - pulleyThickness/2 - hSpacing;
-      
-      // Bore diameter - place on LEFT with reduced spacing
+      // Bore diameter on left
       drawDimension(
-        leftSideSpacing, centerY - boreRadius,
-        leftSideSpacing, centerY + boreRadius,
-        `Ø${boreDiameter}`,
+        leftSide, centerY - boreRadius,
+        leftSide, centerY + boreRadius,
+        `Ø${boreDiameter} ${unit}`,
         "left",
-        50 // Reduced from 120 to 50
+        30
       );
     }
   };
@@ -555,18 +486,16 @@ const PulleyDrawingArea: React.FC<{
   />;
 };
 
-// Export as DXF (work in progress feature - requires external library)
+// Export as DXF
 const handleExportDXF = () => {
   toast.info("DXF export is currently under development");
   // Implementation would need to use a DXF generation library
-  // like makerjs or dxf-writer to convert canvas drawing to DXF
 };
 
-// Export as 3D Model (conceptual - requires 3D modeling library)
+// Export as 3D Model (conceptual)
 const handleExport3D = () => {
   toast.info("3D model export is currently under development");
   // Implementation would need a 3D modeling library and STEP file exporter
-  // Complex implementation requiring Three.js and converter libraries
 };
 
 const PulleyDesign = () => {

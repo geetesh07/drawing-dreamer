@@ -23,7 +23,20 @@ const App = () => {
   const { theme, setTheme } = useTheme();
   
   useEffect(() => {
+    // Apply theme class to document root
     document.documentElement.classList.toggle('dark', theme === 'dark');
+    
+    // Also set a data attribute for additional CSS targeting
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    // Apply specific text color classes based on theme
+    if (theme === 'dark') {
+      document.documentElement.classList.add('text-white');
+      document.documentElement.classList.remove('text-black');
+    } else {
+      document.documentElement.classList.add('text-black');
+      document.documentElement.classList.remove('text-white');
+    }
   }, [theme]);
 
   const toggleTheme = () => {

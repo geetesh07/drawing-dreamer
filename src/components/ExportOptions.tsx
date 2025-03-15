@@ -57,9 +57,9 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
       
       const imgData = canvas.toDataURL('image/png', 1.0);
       
-      // Create PDF with proper dimensions
+      // Create PDF with proper dimensions - IMPORTANT: Use landscape orientation
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: 'landscape', // Ensure landscape orientation
         unit: 'mm',
         format: 'a4'
       });
@@ -68,19 +68,16 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      // Load the template image (from public folder)
-      const template = new Image();
-      template.src = 'public/lovable-uploads/d20f33ee-b15d-4653-98ef-a6adddd18558.png';
+      // Draw a white background first (instead of using template)
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
       
-      // First add the template image
-      pdf.addImage('public/lovable-uploads/d20f33ee-b15d-4653-98ef-a6adddd18558.png', 'PNG', 0, 0, pdfWidth, pdfHeight);
-      
-      // Calculate the drawing area based on the template
-      // These values need to be adjusted based on the template
-      const drawingAreaX = pdfWidth * 0.15; // 15% from left margin
-      const drawingAreaY = pdfHeight * 0.2; // 20% from top margin
-      const drawingAreaWidth = pdfWidth * 0.7; // 70% of page width 
-      const drawingAreaHeight = pdfHeight * 0.6; // 60% of page height
+      // Calculate the drawing area based on template size
+      // These values are adjusted for landscape A4
+      const drawingAreaX = pdfWidth * 0.1; // 10% from left margin
+      const drawingAreaY = pdfHeight * 0.15; // 15% from top margin
+      const drawingAreaWidth = pdfWidth * 0.8; // 80% of page width 
+      const drawingAreaHeight = pdfHeight * 0.7; // 70% of page height
       
       // Calculate scaling to fit the drawing in the drawing area
       const scaleFactor = Math.min(
@@ -95,18 +92,45 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
       const x = drawingAreaX + (drawingAreaWidth - scaledWidth) / 2;
       const y = drawingAreaY + (drawingAreaHeight - scaledHeight) / 2;
       
-      // Add the drawing to the PDF (on top of the template)
+      // Add the drawing to the PDF
       pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
       
       // Add metadata
       const { width, height, cornerRadius, depth, unit } = dimensions;
       const date = new Date().toLocaleDateString();
       
-      // Add company info at correct position
-      pdf.setFontSize(9);
-      pdf.text(`Customer: Drawing Generator Demo`, pdfWidth * 0.8, pdfHeight * 0.83);
-      pdf.text(`Part: ${width}×${height}×${depth} ${unit}`, pdfWidth * 0.8, pdfHeight * 0.86);
-      pdf.text(`Date: ${date}`, pdfWidth * 0.8, pdfHeight * 0.89);
+      // Add border and title block
+      pdf.setDrawColor(0);
+      pdf.setLineWidth(0.5);
+      
+      // Draw border around the drawing area
+      pdf.rect(drawingAreaX - 5, drawingAreaY - 5, 
+               drawingAreaWidth + 10, drawingAreaHeight + 10);
+      
+      // Draw title block at bottom
+      const titleBlockY = drawingAreaY + drawingAreaHeight + 10;
+      const titleBlockHeight = pdfHeight - titleBlockY - 10;
+      pdf.rect(drawingAreaX - 5, titleBlockY, drawingAreaWidth + 10, titleBlockHeight);
+      
+      // Vertical dividers in title block
+      const dividerX1 = drawingAreaX + (drawingAreaWidth / 3);
+      const dividerX2 = drawingAreaX + (drawingAreaWidth * 2/3);
+      pdf.line(dividerX1, titleBlockY, dividerX1, titleBlockY + titleBlockHeight);
+      pdf.line(dividerX2, titleBlockY, dividerX2, titleBlockY + titleBlockHeight);
+      
+      // Add company info and metadata
+      pdf.setFontSize(14);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text("TECHNICAL DRAWING", drawingAreaX, drawingAreaY - 10);
+      
+      // Add specs in title block
+      pdf.setFontSize(10);
+      pdf.text(`Dimensions: ${width}×${height}×${depth} ${unit}`, drawingAreaX + 5, titleBlockY + 10);
+      pdf.text(`Corner Radius: ${cornerRadius} ${unit}`, drawingAreaX + 5, titleBlockY + 20);
+      pdf.text(`Drawing Date: ${date}`, dividerX1 + 5, titleBlockY + 10);
+      pdf.text("Scale: 1:1", dividerX1 + 5, titleBlockY + 20);
+      pdf.text("Drawing Generator Demo", dividerX2 + 5, titleBlockY + 10);
+      pdf.text("Engineering Department", dividerX2 + 5, titleBlockY + 20);
       
       // Save the PDF
       pdf.save(`production_drawing_${width}x${height}R${cornerRadius}${unit}.pdf`);

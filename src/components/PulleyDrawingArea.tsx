@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from "react";
 
 interface PulleyParameters {
@@ -62,6 +63,12 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
   // Format value with unit
   const formatWithUnit = (value: number, unit: string) => {
     return `${value} ${unit}`;
+  };
+
+  // Add grid background (no-op placeholder)
+  const addGridBackground = (svg: SVGSVGElement, containerSize: { width: number; height: number }) => {
+    // Grid background implementation can be added here if needed
+    return;
   };
 
   // Create or update SVG drawing
@@ -672,4 +679,99 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     diameterBg.setAttribute("ry", "4");
     diameterBg.setAttribute("fill", fillColor);
     diameterBg.setAttribute("fill-opacity", "0.9");
-    svg.
+    svg.appendChild(diameterBg);
+    
+    // Diameter dimension text
+    const diameterLabel = document.createElementNS(svgNS, "text");
+    diameterLabel.setAttribute("x", (centerX + scaledThickness/2 + 45 + diameterTextWidth/2).toString());
+    diameterLabel.setAttribute("y", (centerY + 5).toString());
+    diameterLabel.setAttribute("text-anchor", "middle");
+    diameterLabel.setAttribute("font-family", "Inter, system-ui, sans-serif");
+    diameterLabel.setAttribute("font-size", "12");
+    diameterLabel.setAttribute("fill", textColor);
+    diameterLabel.textContent = `Ø${originalParams.diameter} ${unit}`;
+    svg.appendChild(diameterLabel);
+    
+    // Add diameter dimension line
+    const diameterDimLine = document.createElementNS(svgNS, "line");
+    diameterDimLine.setAttribute("x1", (centerX + scaledThickness/2 + 25).toString());
+    diameterDimLine.setAttribute("y1", (centerY - radius).toString());
+    diameterDimLine.setAttribute("x2", (centerX + scaledThickness/2 + 25).toString());
+    diameterDimLine.setAttribute("y2", (centerY + radius).toString());
+    diameterDimLine.setAttribute("stroke", strokeColor);
+    diameterDimLine.setAttribute("stroke-width", "1");
+    svg.appendChild(diameterDimLine);
+    
+    // Arrow heads for diameter line
+    // Top arrow
+    const diameterTopArrow = document.createElementNS(svgNS, "polygon");
+    diameterTopArrow.setAttribute("points", 
+      `${centerX + scaledThickness/2 + 25},${centerY - radius} ` + 
+      `${centerX + scaledThickness/2 + 28},${centerY - radius + 6} ` + 
+      `${centerX + scaledThickness/2 + 22},${centerY - radius + 6}`
+    );
+    diameterTopArrow.setAttribute("fill", strokeColor);
+    svg.appendChild(diameterTopArrow);
+    
+    // Bottom arrow
+    const diameterBottomArrow = document.createElementNS(svgNS, "polygon");
+    diameterBottomArrow.setAttribute("points", 
+      `${centerX + scaledThickness/2 + 25},${centerY + radius} ` + 
+      `${centerX + scaledThickness/2 + 28},${centerY + radius - 6} ` + 
+      `${centerX + scaledThickness/2 + 22},${centerY + radius - 6}`
+    );
+    diameterBottomArrow.setAttribute("fill", strokeColor);
+    svg.appendChild(diameterBottomArrow);
+    
+    // Add diameter extension lines
+    const diameterExtLine1 = document.createElementNS(svgNS, "line");
+    diameterExtLine1.setAttribute("x1", (centerX + scaledThickness/2).toString());
+    diameterExtLine1.setAttribute("y1", (centerY - radius).toString());
+    diameterExtLine1.setAttribute("x2", (centerX + scaledThickness/2 + 25).toString());
+    diameterExtLine1.setAttribute("y2", (centerY - radius).toString());
+    diameterExtLine1.setAttribute("stroke", strokeColor);
+    diameterExtLine1.setAttribute("stroke-width", "0.75");
+    diameterExtLine1.setAttribute("stroke-dasharray", "4 2");
+    svg.appendChild(diameterExtLine1);
+    
+    const diameterExtLine2 = document.createElementNS(svgNS, "line");
+    diameterExtLine2.setAttribute("x1", (centerX + scaledThickness/2).toString());
+    diameterExtLine2.setAttribute("y1", (centerY + radius).toString());
+    diameterExtLine2.setAttribute("x2", (centerX + scaledThickness/2 + 25).toString());
+    diameterExtLine2.setAttribute("y2", (centerY + radius).toString());
+    diameterExtLine2.setAttribute("stroke", strokeColor);
+    diameterExtLine2.setAttribute("stroke-width", "0.75");
+    diameterExtLine2.setAttribute("stroke-dasharray", "4 2");
+    svg.appendChild(diameterExtLine2);
+    
+    // Add bore dimension on left side with spacing
+    // Background for better visibility
+    const boreBg = document.createElementNS(svgNS, "rect");
+    const boreTextWidth = 80;
+    const boreTextHeight = 18;
+    boreBg.setAttribute("x", (centerX - scaledThickness/2 - 45 - boreTextWidth).toString());
+    boreBg.setAttribute("y", (centerY - boreTextHeight/2).toString());
+    boreBg.setAttribute("width", boreTextWidth.toString());
+    boreBg.setAttribute("height", boreTextHeight.toString());
+    boreBg.setAttribute("rx", "4");
+    boreBg.setAttribute("ry", "4");
+    boreBg.setAttribute("fill", fillColor);
+    boreBg.setAttribute("fill-opacity", "0.9");
+    svg.appendChild(boreBg);
+    
+    // Bore dimension text
+    const boreLabel = document.createElementNS(svgNS, "text");
+    boreLabel.setAttribute("x", (centerX - scaledThickness/2 - 45 - boreTextWidth/2).toString());
+    boreLabel.setAttribute("y", (centerY + 5).toString());
+    boreLabel.setAttribute("text-anchor", "middle");
+    boreLabel.setAttribute("font-family", "Inter, system-ui, sans-serif");
+    boreLabel.setAttribute("font-size", "12");
+    boreLabel.setAttribute("fill", textColor);
+    boreLabel.textContent = `Ø${originalParams.boreDiameter} ${unit}`;
+    svg.appendChild(boreLabel);
+  };
+
+  return <div ref={containerRef} className={className} style={{ width: '100%', height: '100%', minHeight: 400 }} />;
+};
+
+export default PulleyDrawingArea;

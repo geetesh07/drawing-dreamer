@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import DrawingArea from "@/components/DrawingArea";
 import PulleyDrawingArea from "@/components/PulleyDrawingArea";
@@ -52,10 +53,24 @@ interface CalculatedParameters {
   
   // Idler parameters
   idler: {
-    diameter: number;
-    width: number;
-    boreDiameter: number;
+    outerDiameter: number;
+    length: number;
+    innerDiameter: number;
     unit: "mm" | "cm" | "m" | "in";
+  };
+
+  // Calculation details - for displaying intermediate calculation results
+  details: {
+    areaCross: number;
+    areaCrossSqM: number;
+    calculatedCapacity: number;
+    beltLoad: number;
+    effectiveBeltWidth: number;
+    centralHeight: number;
+    materialHeight: number;
+    materialDensity: number;
+    loadFactor: number;
+    capacityFactor: number;
   };
 }
 
@@ -74,6 +89,7 @@ const UnifiedGenerator = () => {
   const [calculatedParams, setCalculatedParams] = useState<CalculatedParameters | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("input");
+  const [activeAccordion, setActiveAccordion] = useState<string[]>(["conveyor"]);
   
   // Drawing refs for exports
   const conveyorRef = useRef<HTMLDivElement>(null);
@@ -259,10 +275,23 @@ const UnifiedGenerator = () => {
           unit: unit
         },
         idler: {
-          diameter: idlerDiameter,
-          width: idlerWidth,
-          boreDiameter: idlerBoreDiameter,
+          outerDiameter: idlerDiameter,
+          length: idlerWidth,
+          innerDiameter: idlerBoreDiameter,
           unit: unit
+        },
+        // Store calculation details for displaying in the UI
+        details: {
+          areaCross,
+          areaCrossSqM,
+          calculatedCapacity,
+          beltLoad,
+          effectiveBeltWidth,
+          centralHeight,
+          materialHeight,
+          materialDensity,
+          loadFactor,
+          capacityFactor
         }
       };
       
@@ -318,15 +347,34 @@ const UnifiedGenerator = () => {
         pdf.setLineWidth(0.5);
         pdf.rect(10, 10, pdfWidth - 20, pdfHeight - 20);
         
+        // Add title block
+        pdf.setFillColor(240, 240, 240);
+        pdf.rect(10, 10, pdfWidth - 20, 20, 'F');
+        pdf.setDrawColor(0, 0, 0);
+        pdf.setLineWidth(0.5);
+        pdf.rect(10, 10, pdfWidth - 20, 20, 'S');
+        
         // Add header
         pdf.setFontSize(16);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(title, pdfWidth / 2, 20, { align: 'center' });
+        pdf.text(title.toUpperCase() + " TECHNICAL DRAWING", pdfWidth / 2, 22, { align: 'center' });
         
         // Add company info
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
-        pdf.text("Drawing Generator - Engineering Department", pdfWidth - 20, 15, { align: 'right' });
+        pdf.text("Drawing Generator - Engineering Department", pdfWidth - 20, 18, { align: 'right' });
+        
+        // Add bottom info box
+        pdf.setFillColor(240, 240, 240);
+        pdf.rect(10, pdfHeight - 30, pdfWidth - 20, 20, 'F');
+        pdf.setDrawColor(0, 0, 0);
+        pdf.setLineWidth(0.5);
+        pdf.rect(10, pdfHeight - 30, pdfWidth - 20, 20, 'S');
+        
+        // Add dividing lines for bottom info box
+        pdf.line(pdfWidth / 4, pdfHeight - 30, pdfWidth / 4, pdfHeight - 10);
+        pdf.line(pdfWidth / 2, pdfHeight - 30, pdfWidth / 2, pdfHeight - 10);
+        pdf.line(3 * pdfWidth / 4, pdfHeight - 30, 3 * pdfWidth / 4, pdfHeight - 10);
       } catch (err) {
         console.error("Error with template:", err);
         // Continue without template
@@ -355,43 +403,51 @@ const UnifiedGenerator = () => {
       pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
       
       // Add input parameters
-      pdf.setFontSize(10);
+      pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
-      pdf.text("Input Parameters:", 15, pdfHeight - 60);
+      pdf.text("INPUT PARAMETERS:", 15, pdfHeight - 25);
       
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Belt Width: ${inputParams.beltWidth} ${inputParams.unit}`, 20, pdfHeight - 55);
-      pdf.text(`Belt Speed: ${inputParams.beltSpeed} m/s`, 20, pdfHeight - 50);
-      pdf.text(`Capacity: ${inputParams.capacity} t/h`, 20, pdfHeight - 45);
-      pdf.text(`Material: ${inputParams.material}`, 20, pdfHeight - 40);
-      pdf.text(`Inclination: ${inputParams.inclination}°`, 20, pdfHeight - 35);
+      pdf.text(`Belt Width: ${inputParams.beltWidth} ${inputParams.unit}`, 20, pdfHeight - 20);
+      pdf.text(`Belt Speed: ${inputParams.beltSpeed} m/s`, 20, pdfHeight - 15);
       
       // Add calculated parameters specific to component type
-      pdf.setFontSize(10);
+      pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
-      pdf.text("Calculated Dimensions:", 15, pdfHeight - 25);
+      pdf.text("CALCULATED DIMENSIONS:", pdfWidth / 4 + 5, pdfHeight - 25);
       
       pdf.setFont('helvetica', 'normal');
       
       if (title === "Conveyor") {
-        pdf.text(`Length: ${calculatedParams?.conveyor.width} ${calculatedParams?.conveyor.unit}`, 20, pdfHeight - 20);
-        pdf.text(`Width: ${calculatedParams?.conveyor.height} ${calculatedParams?.conveyor.unit}`, 20, pdfHeight - 15);
-        pdf.text(`Depth: ${calculatedParams?.conveyor.depth} ${calculatedParams?.conveyor.unit}`, 20, pdfHeight - 10);
+        pdf.text(`Length: ${calculatedParams?.conveyor.width} ${calculatedParams?.conveyor.unit}`, pdfWidth / 4 + 10, pdfHeight - 20);
+        pdf.text(`Width: ${calculatedParams?.conveyor.height} ${calculatedParams?.conveyor.unit}`, pdfWidth / 4 + 10, pdfHeight - 15);
       } else if (title === "Pulley") {
-        pdf.text(`Diameter: Ø${calculatedParams?.pulley.diameter} ${calculatedParams?.pulley.unit}`, 20, pdfHeight - 20);
-        pdf.text(`Thickness: ${calculatedParams?.pulley.thickness} ${calculatedParams?.pulley.unit}`, 20, pdfHeight - 15);
-        pdf.text(`Bore: Ø${calculatedParams?.pulley.boreDiameter} ${calculatedParams?.pulley.unit}`, 20, pdfHeight - 10);
+        pdf.text(`Diameter: Ø${calculatedParams?.pulley.diameter} ${calculatedParams?.pulley.unit}`, pdfWidth / 4 + 10, pdfHeight - 20);
+        pdf.text(`Thickness: ${calculatedParams?.pulley.thickness} ${calculatedParams?.pulley.unit}`, pdfWidth / 4 + 10, pdfHeight - 15);
       } else if (title === "Idler") {
-        pdf.text(`Diameter: Ø${calculatedParams?.idler.diameter} ${calculatedParams?.idler.unit}`, 20, pdfHeight - 20);
-        pdf.text(`Width: ${calculatedParams?.idler.width} ${calculatedParams?.idler.unit}`, 20, pdfHeight - 15);
-        pdf.text(`Bore: Ø${calculatedParams?.idler.boreDiameter} ${calculatedParams?.idler.unit}`, 20, pdfHeight - 10);
+        pdf.text(`Diameter: Ø${calculatedParams?.idler.outerDiameter} ${calculatedParams?.idler.unit}`, pdfWidth / 4 + 10, pdfHeight - 20);
+        pdf.text(`Length: ${calculatedParams?.idler.length} ${calculatedParams?.idler.unit}`, pdfWidth / 4 + 10, pdfHeight - 15);
       }
       
-      // Add date and time
+      // Add material info
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("MATERIAL:", pdfWidth / 2 + 5, pdfHeight - 25);
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Material: ${inputParams.material}`, pdfWidth / 2 + 10, pdfHeight - 20);
+      pdf.text(`Capacity: ${inputParams.capacity} t/h`, pdfWidth / 2 + 10, pdfHeight - 15);
+      
+      // Add project info
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("PROJECT INFO:", 3 * pdfWidth / 4 + 5, pdfHeight - 25);
+      
+      // Date and scale
       const date = new Date().toLocaleDateString();
-      const time = new Date().toLocaleTimeString();
-      pdf.setFontSize(8);
-      pdf.text(`Generated on: ${date} at ${time}`, pdfWidth - 15, pdfHeight - 10, { align: 'right' });
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Date: ${date}`, 3 * pdfWidth / 4 + 10, pdfHeight - 20);
+      pdf.text(`Scale: 1:1`, 3 * pdfWidth / 4 + 10, pdfHeight - 15);
       
       // Save the PDF
       pdf.save(`${title.toLowerCase()}_drawing.pdf`);
@@ -420,10 +476,14 @@ const UnifiedGenerator = () => {
       if (type === "conveyor") {
         dxfContent = generateDXF(calculatedParams.conveyor);
         fileName = `conveyor_${inputParams.beltWidth}${inputParams.unit}.dxf`;
-      } else {
-        // For pulley and idler, we'd need to implement specific DXF generation
-        toast.info("DXF export for this component is under development");
-        return;
+      } else if (type === "pulley") {
+        // Simple pulley DXF generation (can be expanded with more detailed geometry)
+        dxfContent = generatePulleyDXF(calculatedParams.pulley);
+        fileName = `pulley_D${calculatedParams.pulley.diameter}${calculatedParams.pulley.unit}.dxf`;
+      } else if (type === "idler") {
+        // Simple idler DXF generation
+        dxfContent = generateIdlerDXF(calculatedParams.idler);
+        fileName = `idler_D${calculatedParams.idler.outerDiameter}${calculatedParams.idler.unit}.dxf`;
       }
       
       // Create blob and download
@@ -438,6 +498,75 @@ const UnifiedGenerator = () => {
       console.error("Error exporting DXF:", error);
       toast.error("Error exporting DXF file. Please try again.");
     }
+  };
+  
+  // Simple pulley DXF generation for export
+  const generatePulleyDXF = (pulley: CalculatedParameters["pulley"]) => {
+    const { diameter, thickness, boreDiameter, unit } = pulley;
+    const radius = diameter / 2;
+    
+    // Create basic DXF content
+    let dxfContent = "0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n";
+    
+    // Top view (circle)
+    dxfContent += `0\nCIRCLE\n8\nTOP_VIEW\n10\n0\n20\n0\n30\n0\n40\n${radius}\n`;
+    
+    // Bore hole
+    dxfContent += `0\nCIRCLE\n8\nTOP_VIEW\n10\n0\n20\n0\n30\n0\n40\n${boreDiameter/2}\n`;
+    
+    // Side view (rectangle)
+    const halfThickness = thickness / 2;
+    
+    // Rectangle
+    dxfContent += `0\nLINE\n8\nSIDE_VIEW\n10\n${-halfThickness}\n20\n${radius + 50}\n30\n0\n11\n${halfThickness}\n21\n${radius + 50}\n31\n0\n`;
+    dxfContent += `0\nLINE\n8\nSIDE_VIEW\n10\n${halfThickness}\n20\n${radius + 50}\n30\n0\n11\n${halfThickness}\n21\n${radius + 50 + diameter}\n31\n0\n`;
+    dxfContent += `0\nLINE\n8\nSIDE_VIEW\n10\n${halfThickness}\n20\n${radius + 50 + diameter}\n30\n0\n11\n${-halfThickness}\n21\n${radius + 50 + diameter}\n31\n0\n`;
+    dxfContent += `0\nLINE\n8\nSIDE_VIEW\n10\n${-halfThickness}\n20\n${radius + 50 + diameter}\n30\n0\n11\n${-halfThickness}\n21\n${radius + 50}\n31\n0\n`;
+    
+    // Add text for dimensions
+    dxfContent += `0\nTEXT\n8\nDIMENSIONS\n10\n0\n20\n${-radius - 20}\n30\n0\n40\n10\n1\nDiameter: ${diameter}${unit}\n`;
+    dxfContent += `0\nTEXT\n8\nDIMENSIONS\n10\n0\n20\n${-radius - 35}\n30\n0\n40\n10\n1\nThickness: ${thickness}${unit}\n`;
+    dxfContent += `0\nTEXT\n8\nDIMENSIONS\n10\n0\n20\n${-radius - 50}\n30\n0\n40\n10\n1\nBore: ${boreDiameter}${unit}\n`;
+    
+    dxfContent += "0\nENDSEC\n0\nEOF";
+    
+    return dxfContent;
+  };
+  
+  // Simple idler DXF generation for export
+  const generateIdlerDXF = (idler: CalculatedParameters["idler"]) => {
+    const { outerDiameter, length, innerDiameter, unit } = idler;
+    const radius = outerDiameter / 2;
+    
+    // Create basic DXF content
+    let dxfContent = "0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n";
+    
+    // Top view (circle)
+    dxfContent += `0\nCIRCLE\n8\nTOP_VIEW\n10\n0\n20\n0\n30\n0\n40\n${radius}\n`;
+    
+    // Bore hole
+    dxfContent += `0\nCIRCLE\n8\nTOP_VIEW\n10\n0\n20\n0\n30\n0\n40\n${innerDiameter/2}\n`;
+    
+    // Side view (rectangle)
+    const halfLength = length / 2;
+    
+    // Rectangle
+    dxfContent += `0\nLINE\n8\nSIDE_VIEW\n10\n${-halfLength}\n20\n${radius + 50}\n30\n0\n11\n${halfLength}\n21\n${radius + 50}\n31\n0\n`;
+    dxfContent += `0\nLINE\n8\nSIDE_VIEW\n10\n${halfLength}\n20\n${radius + 50}\n30\n0\n11\n${halfLength}\n21\n${radius + 50 + outerDiameter}\n31\n0\n`;
+    dxfContent += `0\nLINE\n8\nSIDE_VIEW\n10\n${halfLength}\n20\n${radius + 50 + outerDiameter}\n30\n0\n11\n${-halfLength}\n21\n${radius + 50 + outerDiameter}\n31\n0\n`;
+    dxfContent += `0\nLINE\n8\nSIDE_VIEW\n10\n${-halfLength}\n20\n${radius + 50 + outerDiameter}\n30\n0\n11\n${-halfLength}\n21\n${radius + 50}\n31\n0\n`;
+    
+    // Center line (bore)
+    dxfContent += `0\nLINE\n8\nSIDE_VIEW\n6\nDASHED\n10\n${-halfLength-20}\n20\n${radius + 50 + outerDiameter/2}\n30\n0\n11\n${halfLength+20}\n21\n${radius + 50 + outerDiameter/2}\n31\n0\n`;
+    
+    // Add text for dimensions
+    dxfContent += `0\nTEXT\n8\nDIMENSIONS\n10\n0\n20\n${-radius - 20}\n30\n0\n40\n10\n1\nDiameter: ${outerDiameter}${unit}\n`;
+    dxfContent += `0\nTEXT\n8\nDIMENSIONS\n10\n0\n20\n${-radius - 35}\n30\n0\n40\n10\n1\nLength: ${length}${unit}\n`;
+    dxfContent += `0\nTEXT\n8\nDIMENSIONS\n10\n0\n20\n${-radius - 50}\n30\n0\n40\n10\n1\nBore: ${innerDiameter}${unit}\n`;
+    
+    dxfContent += "0\nENDSEC\n0\nEOF";
+    
+    return dxfContent;
   };
   
   // Animation variants
@@ -626,6 +755,221 @@ const UnifiedGenerator = () => {
                 animate="visible"
                 className="space-y-8"
               >
+                {/* Calculations Section */}
+                <motion.div variants={itemVariants} className="bg-card border rounded-lg shadow overflow-hidden">
+                  <div className="p-4 bg-muted/30 border-b flex justify-between items-center">
+                    <h2 className="text-xl font-semibold">Calculated Parameters</h2>
+                  </div>
+                  
+                  <div className="p-6">
+                    <Accordion
+                      type="multiple"
+                      value={activeAccordion}
+                      onValueChange={setActiveAccordion}
+                      className="w-full"
+                    >
+                      {/* Input Summary Panel */}
+                      <AccordionItem value="input">
+                        <AccordionTrigger className="text-lg">Input Parameters</AccordionTrigger>
+                        <AccordionContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-muted/10 rounded-md">
+                            <div>
+                              <div className="text-sm text-muted-foreground">Belt Width:</div>
+                              <div className="font-medium">{inputParams.beltWidth} {inputParams.unit}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Belt Speed:</div>
+                              <div className="font-medium">{inputParams.beltSpeed} m/s</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Capacity:</div>
+                              <div className="font-medium">{inputParams.capacity} t/h</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Material:</div>
+                              <div className="font-medium">{inputParams.material}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Inclination:</div>
+                              <div className="font-medium">{inputParams.inclination}°</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Unit:</div>
+                              <div className="font-medium">{inputParams.unit}</div>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                      
+                      {/* Conveyor Panel */}
+                      <AccordionItem value="conveyor">
+                        <AccordionTrigger className="text-lg">Conveyor Parameters</AccordionTrigger>
+                        <AccordionContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <h3 className="font-medium text-base">Primary Dimensions</h3>
+                              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/10 rounded-md">
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Length:</div>
+                                  <div className="font-medium">{calculatedParams.conveyor.width} {calculatedParams.conveyor.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Width:</div>
+                                  <div className="font-medium">{calculatedParams.conveyor.height} {calculatedParams.conveyor.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Depth:</div>
+                                  <div className="font-medium">{calculatedParams.conveyor.depth} {calculatedParams.conveyor.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Material Cross Section:</div>
+                                  <div className="font-medium">{calculatedParams.details.areaCross.toFixed(2)} mm²</div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                              <h3 className="font-medium text-base">Calculation Details</h3>
+                              <div className="grid grid-cols-1 gap-4 p-4 bg-muted/10 rounded-md text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Effective Belt Width:</span>
+                                  <span className="font-mono">{calculatedParams.details.effectiveBeltWidth.toFixed(2)} mm</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Material Height (center):</span>
+                                  <span className="font-mono">{calculatedParams.details.centralHeight.toFixed(2)} mm</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Material Cross-Section:</span>
+                                  <span className="font-mono">{calculatedParams.details.areaCrossSqM.toFixed(6)} m²</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Material Density:</span>
+                                  <span className="font-mono">{calculatedParams.details.materialDensity} kg/m³</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Calculated Capacity:</span>
+                                  <span className="font-mono">{calculatedParams.details.calculatedCapacity.toFixed(2)} t/h</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Belt Load:</span>
+                                  <span className="font-mono">{calculatedParams.details.beltLoad.toFixed(2)} kg/m</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                      
+                      {/* Pulley Panel */}
+                      <AccordionItem value="pulley">
+                        <AccordionTrigger className="text-lg">Pulley Parameters</AccordionTrigger>
+                        <AccordionContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <h3 className="font-medium text-base">Primary Dimensions</h3>
+                              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/10 rounded-md">
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Diameter:</div>
+                                  <div className="font-medium">Ø{calculatedParams.pulley.diameter} {calculatedParams.pulley.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Thickness:</div>
+                                  <div className="font-medium">{calculatedParams.pulley.thickness} {calculatedParams.pulley.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Bore Diameter:</div>
+                                  <div className="font-medium">Ø{calculatedParams.pulley.boreDiameter} {calculatedParams.pulley.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Inner Diameter:</div>
+                                  <div className="font-medium">Ø{calculatedParams.pulley.innerDiameter} {calculatedParams.pulley.unit}</div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                              <h3 className="font-medium text-base">Additional Details</h3>
+                              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/10 rounded-md">
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Groove Depth:</div>
+                                  <div className="font-medium">{calculatedParams.pulley.grooveDepth.toFixed(1)} {calculatedParams.pulley.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Groove Width:</div>
+                                  <div className="font-medium">{calculatedParams.pulley.grooveWidth.toFixed(1)} {calculatedParams.pulley.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Keyway Width:</div>
+                                  <div className="font-medium">{calculatedParams.pulley.keyWayWidth.toFixed(1)} {calculatedParams.pulley.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Keyway Depth:</div>
+                                  <div className="font-medium">{calculatedParams.pulley.keyWayDepth.toFixed(1)} {calculatedParams.pulley.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Load Factor:</div>
+                                  <div className="font-medium">{calculatedParams.details.loadFactor.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Capacity Factor:</div>
+                                  <div className="font-medium">{calculatedParams.details.capacityFactor.toFixed(2)}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                      
+                      {/* Idler Panel */}
+                      <AccordionItem value="idler">
+                        <AccordionTrigger className="text-lg">Idler Parameters</AccordionTrigger>
+                        <AccordionContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <h3 className="font-medium text-base">Primary Dimensions</h3>
+                              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/10 rounded-md">
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Outer Diameter:</div>
+                                  <div className="font-medium">Ø{calculatedParams.idler.outerDiameter} {calculatedParams.idler.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Length:</div>
+                                  <div className="font-medium">{calculatedParams.idler.length} {calculatedParams.idler.unit}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Inner Diameter:</div>
+                                  <div className="font-medium">Ø{calculatedParams.idler.innerDiameter} {calculatedParams.idler.unit}</div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                              <h3 className="font-medium text-base">Calculation Notes</h3>
+                              <div className="p-4 bg-muted/10 rounded-md text-sm space-y-2">
+                                <p className="text-muted-foreground">
+                                  • Idler diameter is determined by belt width: {inputParams.beltWidth} {inputParams.unit}
+                                </p>
+                                <p className="text-muted-foreground">
+                                  • Idler length is 10% wider than belt width (for tracking): {inputParams.beltWidth} × 1.1 = {calculatedParams.idler.length.toFixed(1)} {calculatedParams.idler.unit}
+                                </p>
+                                <p className="text-muted-foreground">
+                                  • Inner diameter is 25% of outer diameter or minimum 20mm: max(20, {calculatedParams.idler.outerDiameter} × 0.25) = {calculatedParams.idler.innerDiameter} {calculatedParams.idler.unit}
+                                </p>
+                                {capacity > 1000 || inputParams.beltSpeed > 3.5 ? (
+                                  <p className="text-muted-foreground">
+                                    • Heavy duty adjustment applied (×1.2) due to high capacity or speed
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+                </motion.div>
+                
                 {/* Conveyor Drawing */}
                 <motion.div variants={itemVariants} className="bg-card border rounded-lg shadow overflow-hidden">
                   <div className="p-4 bg-muted/30 border-b flex justify-between items-center">
@@ -705,14 +1049,19 @@ const UnifiedGenerator = () => {
                 <motion.div variants={itemVariants} className="bg-card border rounded-lg shadow overflow-hidden">
                   <div className="p-4 bg-muted/30 border-b flex justify-between items-center">
                     <h2 className="text-xl font-semibold">Pulley Drawing</h2>
-                    <Button variant="outline" onClick={() => handleExportPDF(pulleyRef, "Pulley")}>
-                      Export PDF
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => handleExportDXF("pulley")}>
+                        Export DXF
+                      </Button>
+                      <Button variant="outline" onClick={() => handleExportPDF(pulleyRef, "Pulley")}>
+                        Export PDF
+                      </Button>
+                    </div>
                   </div>
                   
                   <div ref={pulleyRef} className="bg-white p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Top View */}
+                      {/* Front View */}
                       <div className="relative">
                         <PulleyDrawingArea 
                           parameters={calculatedParams.pulley}
@@ -773,9 +1122,14 @@ const UnifiedGenerator = () => {
                 <motion.div variants={itemVariants} className="bg-card border rounded-lg shadow overflow-hidden">
                   <div className="p-4 bg-muted/30 border-b flex justify-between items-center">
                     <h2 className="text-xl font-semibold">Idler Drawing</h2>
-                    <Button variant="outline" onClick={() => handleExportPDF(idlerRef, "Idler")}>
-                      Export PDF
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => handleExportDXF("idler")}>
+                        Export DXF
+                      </Button>
+                      <Button variant="outline" onClick={() => handleExportPDF(idlerRef, "Idler")}>
+                        Export PDF
+                      </Button>
+                    </div>
                   </div>
                   
                   <div ref={idlerRef} className="bg-white p-6">
@@ -785,13 +1139,15 @@ const UnifiedGenerator = () => {
                         <PulleyDrawingArea 
                           parameters={{
                             ...calculatedParams.idler,
-                            thickness: calculatedParams.idler.width,
+                            diameter: calculatedParams.idler.outerDiameter,
+                            thickness: calculatedParams.idler.length,
+                            boreDiameter: calculatedParams.idler.innerDiameter,
                             // Additional parameters needed for PulleyDrawingArea
-                            innerDiameter: calculatedParams.idler.diameter * 0.7,
+                            innerDiameter: calculatedParams.idler.outerDiameter * 0.7,
                             grooveDepth: 0,
                             grooveWidth: 0,
-                            keyWayWidth: calculatedParams.idler.boreDiameter * 0.3,
-                            keyWayDepth: calculatedParams.idler.boreDiameter * 0.15
+                            keyWayWidth: calculatedParams.idler.innerDiameter * 0.3,
+                            keyWayDepth: calculatedParams.idler.innerDiameter * 0.15
                           }}
                           view="top"
                           className="w-full"
@@ -806,13 +1162,15 @@ const UnifiedGenerator = () => {
                         <PulleyDrawingArea 
                           parameters={{
                             ...calculatedParams.idler,
-                            thickness: calculatedParams.idler.width,
+                            diameter: calculatedParams.idler.outerDiameter,
+                            thickness: calculatedParams.idler.length,
+                            boreDiameter: calculatedParams.idler.innerDiameter,
                             // Additional parameters needed for PulleyDrawingArea
-                            innerDiameter: calculatedParams.idler.diameter * 0.7,
+                            innerDiameter: calculatedParams.idler.outerDiameter * 0.7,
                             grooveDepth: 0,
                             grooveWidth: 0,
-                            keyWayWidth: calculatedParams.idler.boreDiameter * 0.3,
-                            keyWayDepth: calculatedParams.idler.boreDiameter * 0.15
+                            keyWayWidth: calculatedParams.idler.innerDiameter * 0.3,
+                            keyWayDepth: calculatedParams.idler.innerDiameter * 0.15
                           }}
                           view="side"
                           className="w-full"
@@ -829,19 +1187,19 @@ const UnifiedGenerator = () => {
                         <div>
                           <div className="text-xs font-medium text-muted-foreground">IDLER DIAMETER</div>
                           <div className="text-sm font-medium mt-1">
-                            Ø{calculatedParams.idler.diameter} {calculatedParams.idler.unit}
+                            Ø{calculatedParams.idler.outerDiameter} {calculatedParams.idler.unit}
                           </div>
                         </div>
                         <div>
-                          <div className="text-xs font-medium text-muted-foreground">WIDTH</div>
+                          <div className="text-xs font-medium text-muted-foreground">LENGTH</div>
                           <div className="text-sm font-medium mt-1">
-                            {calculatedParams.idler.width} {calculatedParams.idler.unit}
+                            {calculatedParams.idler.length} {calculatedParams.idler.unit}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs font-medium text-muted-foreground">BORE DIAMETER</div>
                           <div className="text-sm font-medium mt-1">
-                            Ø{calculatedParams.idler.boreDiameter} {calculatedParams.idler.unit}
+                            Ø{calculatedParams.idler.innerDiameter} {calculatedParams.idler.unit}
                           </div>
                         </div>
                       </div>

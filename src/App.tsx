@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,9 +9,10 @@ import PulleyDesign from "./pages/PulleyDesign";
 import IdlerDesign from "./pages/IdlerDesign";
 import Deployment from "./pages/Deployment";
 import NotFound from "./pages/NotFound";
+import UnifiedGenerator from "./pages/UnifiedGenerator"; // Import the new component
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { Link } from "react-router-dom";
-import { BriefcaseConveyorBelt, Circle, Monitor, Home as HomeIcon, Ruler, Moon, Sun, Server } from "lucide-react";
+import { BriefcaseConveyorBelt, Circle, Monitor, Home as HomeIcon, Ruler, Moon, Sun, Server, Cog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./hooks/useTheme";
 import { useEffect } from "react";
@@ -79,6 +79,12 @@ const App = () => {
                       </Link>
                     </NavigationMenuItem>
                     <NavigationMenuItem>
+                      <Link to="/generator" className={navigationMenuTriggerStyle()}>
+                        <Cog className="mr-2 h-4 w-4" />
+                        All-in-One
+                      </Link>
+                    </NavigationMenuItem>
+                    <NavigationMenuItem>
                       <Link to="/deployment" className={navigationMenuTriggerStyle()}>
                         <Server className="mr-2 h-4 w-4" />
                         Deployment
@@ -107,6 +113,7 @@ const App = () => {
                 <Route path="/conveyor" element={<Index />} />
                 <Route path="/pulley" element={<PulleyDesign />} />
                 <Route path="/idler" element={<IdlerDesign />} />
+                <Route path="/generator" element={<UnifiedGenerator />} />
                 <Route path="/deployment" element={<Deployment />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

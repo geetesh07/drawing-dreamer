@@ -12,7 +12,7 @@ import Deployment from "./pages/Deployment";
 import NotFound from "./pages/NotFound";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { Link } from "react-router-dom";
-import { BriefcaseConveyorBelt, Circle, DesktopTower, Home as HomeIcon, Ruler, Moon, Sun, Server } from "lucide-react";
+import { BriefcaseConveyorBelt, Circle, Monitor, Home as HomeIcon, Ruler, Moon, Sun, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./hooks/useTheme";
 import { useEffect } from "react";

@@ -6,7 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import DrawingArea from "@/components/DrawingArea";
 import PulleyDrawingArea from "@/components/PulleyDrawingArea";
@@ -89,7 +94,6 @@ const UnifiedGenerator = () => {
   const [calculatedParams, setCalculatedParams] = useState<CalculatedParameters | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("input");
-  const [activeAccordion, setActiveAccordion] = useState<string[]>(["conveyor"]);
   
   // Drawing refs for exports
   const conveyorRef = useRef<HTMLDivElement>(null);
@@ -762,46 +766,37 @@ const UnifiedGenerator = () => {
                   </div>
                   
                   <div className="p-6">
-                    <Accordion
-                      type="multiple"
-                      value={activeAccordion}
-                      onValueChange={setActiveAccordion}
-                      className="w-full"
-                    >
-                      {/* Input Summary Panel */}
-                      <AccordionItem value="input">
-                        <AccordionTrigger className="text-lg">Input Parameters</AccordionTrigger>
-                        <AccordionContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-muted/10 rounded-md">
-                            <div>
-                              <div className="text-sm text-muted-foreground">Belt Width:</div>
-                              <div className="font-medium">{inputParams.beltWidth} {inputParams.unit}</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-muted-foreground">Belt Speed:</div>
-                              <div className="font-medium">{inputParams.beltSpeed} m/s</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-muted-foreground">Capacity:</div>
-                              <div className="font-medium">{inputParams.capacity} t/h</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-muted-foreground">Material:</div>
-                              <div className="font-medium">{inputParams.material}</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-muted-foreground">Inclination:</div>
-                              <div className="font-medium">{inputParams.inclination}°</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-muted-foreground">Unit:</div>
-                              <div className="font-medium">{inputParams.unit}</div>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                      
-                      {/* Conveyor Panel */}
+                    <div className="mb-4">
+                      <h3 className="text-lg font-medium mb-2">Input Summary</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-muted/10 rounded-md">
+                        <div>
+                          <div className="text-sm text-muted-foreground">Belt Width:</div>
+                          <div className="font-medium">{inputParams.beltWidth} {inputParams.unit}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-muted-foreground">Belt Speed:</div>
+                          <div className="font-medium">{inputParams.beltSpeed} m/s</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-muted-foreground">Capacity:</div>
+                          <div className="font-medium">{inputParams.capacity} t/h</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-muted-foreground">Material:</div>
+                          <div className="font-medium">{inputParams.material}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-muted-foreground">Inclination:</div>
+                          <div className="font-medium">{inputParams.inclination}°</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-muted-foreground">Unit:</div>
+                          <div className="font-medium">{inputParams.unit}</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value="conveyor">
                         <AccordionTrigger className="text-lg">Conveyor Parameters</AccordionTrigger>
                         <AccordionContent>
@@ -861,7 +856,6 @@ const UnifiedGenerator = () => {
                         </AccordionContent>
                       </AccordionItem>
                       
-                      {/* Pulley Panel */}
                       <AccordionItem value="pulley">
                         <AccordionTrigger className="text-lg">Pulley Parameters</AccordionTrigger>
                         <AccordionContent>
@@ -921,7 +915,6 @@ const UnifiedGenerator = () => {
                         </AccordionContent>
                       </AccordionItem>
                       
-                      {/* Idler Panel */}
                       <AccordionItem value="idler">
                         <AccordionTrigger className="text-lg">Idler Parameters</AccordionTrigger>
                         <AccordionContent>
@@ -956,7 +949,7 @@ const UnifiedGenerator = () => {
                                 <p className="text-muted-foreground">
                                   • Inner diameter is 25% of outer diameter or minimum 20mm: max(20, {calculatedParams.idler.outerDiameter} × 0.25) = {calculatedParams.idler.innerDiameter} {calculatedParams.idler.unit}
                                 </p>
-                                {capacity > 1000 || inputParams.beltSpeed > 3.5 ? (
+                                {inputParams.capacity > 1000 || inputParams.beltSpeed > 3.5 ? (
                                   <p className="text-muted-foreground">
                                     • Heavy duty adjustment applied (×1.2) due to high capacity or speed
                                   </p>

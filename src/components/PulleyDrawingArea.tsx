@@ -88,7 +88,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     const { diameter, thickness, boreDiameter, unit } = parameters;
     
     // Calculate scale factor
-    const padding = 120; // Increased padding for better dimension visibility
+    const padding = 150; // Increased padding for better dimension visibility
     const availableWidth = containerSize.width - padding * 2;
     const availableHeight = containerSize.height - padding * 2;
     
@@ -214,8 +214,23 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     boreCircle.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(boreCircle);
     
-    // Add diameter dimension line (horizontal)
-    const dimLineY = centerY + radius + 60;
+    // Add keyway to the bore (properly positioned at the bore edge)
+    const keyWayWidth = boreRadius * 0.5;
+    const keyWayHeight = boreRadius * 0.2;
+    
+    // Create keyway - make it touch the bore without gap
+    const keyWay = document.createElementNS(svgNS, "rect");
+    keyWay.setAttribute("x", (centerX - keyWayWidth/2).toString());
+    keyWay.setAttribute("y", (centerY - boreRadius).toString()); // Position exactly at bore edge
+    keyWay.setAttribute("width", keyWayWidth.toString());
+    keyWay.setAttribute("height", keyWayHeight.toString());
+    keyWay.setAttribute("fill", fillColor);
+    keyWay.setAttribute("stroke", strokeColor);
+    keyWay.setAttribute("stroke-width", "1");
+    svg.appendChild(keyWay);
+    
+    // Add diameter dimension line (horizontal) - increased spacing
+    const dimLineY = centerY + radius + 80; // Increased spacing
     
     // Horizontal dimension line
     const horDimLine = document.createElementNS(svgNS, "line");
@@ -310,6 +325,76 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     boreText.setAttribute("fill", textColor);
     boreText.textContent = `Ø${originalParams.boreDiameter} ${unit}`;
     svg.appendChild(boreText);
+    
+    // Add keyway dimension - with spacing for clarity
+    const keyDimLineY = centerY - radius - 60; // Position above the pulley
+    
+    // Keyway dimension line
+    const keyDimLine = document.createElementNS(svgNS, "line");
+    keyDimLine.setAttribute("x1", (centerX - keyWayWidth/2).toString());
+    keyDimLine.setAttribute("y1", keyDimLineY.toString());
+    keyDimLine.setAttribute("x2", (centerX + keyWayWidth/2).toString());
+    keyDimLine.setAttribute("y2", keyDimLineY.toString());
+    keyDimLine.setAttribute("stroke", strokeColor);
+    keyDimLine.setAttribute("stroke-width", "1");
+    svg.appendChild(keyDimLine);
+    
+    // Keyway extension lines
+    const keyExtLine1 = document.createElementNS(svgNS, "line");
+    keyExtLine1.setAttribute("x1", (centerX - keyWayWidth/2).toString());
+    keyExtLine1.setAttribute("y1", (centerY - boreRadius).toString());
+    keyExtLine1.setAttribute("x2", (centerX - keyWayWidth/2).toString());
+    keyExtLine1.setAttribute("y2", keyDimLineY.toString());
+    keyExtLine1.setAttribute("stroke", strokeColor);
+    keyExtLine1.setAttribute("stroke-width", "0.75");
+    keyExtLine1.setAttribute("stroke-dasharray", "4 2");
+    svg.appendChild(keyExtLine1);
+    
+    const keyExtLine2 = document.createElementNS(svgNS, "line");
+    keyExtLine2.setAttribute("x1", (centerX + keyWayWidth/2).toString());
+    keyExtLine2.setAttribute("y1", (centerY - boreRadius).toString());
+    keyExtLine2.setAttribute("x2", (centerX + keyWayWidth/2).toString());
+    keyExtLine2.setAttribute("y2", keyDimLineY.toString());
+    keyExtLine2.setAttribute("stroke", strokeColor);
+    keyExtLine2.setAttribute("stroke-width", "0.75");
+    keyExtLine2.setAttribute("stroke-dasharray", "4 2");
+    svg.appendChild(keyExtLine2);
+    
+    // Arrow heads for keyway dimension
+    const keyLeftArrow = document.createElementNS(svgNS, "polygon");
+    keyLeftArrow.setAttribute("points", `${centerX - keyWayWidth/2},${keyDimLineY} ${centerX - keyWayWidth/2 + 6},${keyDimLineY - 3} ${centerX - keyWayWidth/2 + 6},${keyDimLineY + 3}`);
+    keyLeftArrow.setAttribute("fill", strokeColor);
+    svg.appendChild(keyLeftArrow);
+    
+    const keyRightArrow = document.createElementNS(svgNS, "polygon");
+    keyRightArrow.setAttribute("points", `${centerX + keyWayWidth/2},${keyDimLineY} ${centerX + keyWayWidth/2 - 6},${keyDimLineY - 3} ${centerX + keyWayWidth/2 - 6},${keyDimLineY + 3}`);
+    keyRightArrow.setAttribute("fill", strokeColor);
+    svg.appendChild(keyRightArrow);
+    
+    // Keyway dimension text background
+    const keyTextBg = document.createElementNS(svgNS, "rect");
+    const keyTextWidth = 60;
+    const keyTextHeight = 18;
+    keyTextBg.setAttribute("x", (centerX - keyTextWidth/2).toString());
+    keyTextBg.setAttribute("y", (keyDimLineY - keyTextHeight - 2).toString());
+    keyTextBg.setAttribute("width", keyTextWidth.toString());
+    keyTextBg.setAttribute("height", keyTextHeight.toString());
+    keyTextBg.setAttribute("rx", "4");
+    keyTextBg.setAttribute("ry", "4");
+    keyTextBg.setAttribute("fill", fillColor);
+    keyTextBg.setAttribute("fill-opacity", "0.9");
+    svg.appendChild(keyTextBg);
+    
+    // Keyway dimension text
+    const keyText = document.createElementNS(svgNS, "text");
+    keyText.setAttribute("x", centerX.toString());
+    keyText.setAttribute("y", (keyDimLineY - 10).toString());
+    keyText.setAttribute("text-anchor", "middle");
+    keyText.setAttribute("font-family", "Inter, system-ui, sans-serif");
+    keyText.setAttribute("font-size", "12");
+    keyText.setAttribute("fill", textColor);
+    keyText.textContent = `Key: ${Math.round(keyWayWidth / scaleFactor)} ${unit}`;
+    svg.appendChild(keyText);
   };
 
   // Draw side view (rectangle)
@@ -477,15 +562,32 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
       boreLine.setAttribute("stroke-width", "1.5");
       boreLine.setAttribute("stroke-dasharray", "4 2");
       svg.appendChild(boreLine);
+      
+      // Add keyway to the bore (matching the keyway in top view)
+      // Keyway is shown as a small rectangle at the top of the bore line
+      const keyWayWidth = scaledThickness * 0.5; // Width of keyway along the shaft
+      const keyWayHeight = boreRadius * 0.2; // Height of keyway (matching top view)
+      
+      // Create keyway without gap - directly from the bore line
+      const keyWay = document.createElementNS(svgNS, "rect");
+      keyWay.setAttribute("x", (centerX - keyWayWidth/2).toString());
+      keyWay.setAttribute("y", (centerY - boreRadius).toString()); // Position exactly at bore edge
+      keyWay.setAttribute("width", keyWayWidth.toString());
+      keyWay.setAttribute("height", keyWayHeight.toString());
+      keyWay.setAttribute("fill", fillColor);
+      keyWay.setAttribute("stroke", strokeColor);
+      keyWay.setAttribute("stroke-width", "1");
+      svg.appendChild(keyWay);
     }
     
-    // Add thickness dimension at the top
+    // Improved dimension spacing - use wider spacing to prevent overlap
+    // Add thickness dimension at the top with more space
     // Background for better visibility
     const thicknessBg = document.createElementNS(svgNS, "rect");
     const thicknessTextWidth = 80;
     const thicknessTextHeight = 18;
     thicknessBg.setAttribute("x", (centerX - thicknessTextWidth/2).toString());
-    thicknessBg.setAttribute("y", (centerY - radius - 40).toString());
+    thicknessBg.setAttribute("y", (centerY - radius - 50).toString()); // More space
     thicknessBg.setAttribute("width", thicknessTextWidth.toString());
     thicknessBg.setAttribute("height", thicknessTextHeight.toString());
     thicknessBg.setAttribute("rx", "4");
@@ -497,7 +599,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     // Thickness dimension text
     const thicknessLabel = document.createElementNS(svgNS, "text");
     thicknessLabel.setAttribute("x", centerX.toString());
-    thicknessLabel.setAttribute("y", (centerY - radius - 28).toString());
+    thicknessLabel.setAttribute("y", (centerY - radius - 38).toString()); // More space
     thicknessLabel.setAttribute("text-anchor", "middle");
     thicknessLabel.setAttribute("font-family", "Inter, system-ui, sans-serif");
     thicknessLabel.setAttribute("font-size", "12");
@@ -508,9 +610,9 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     // Draw thickness dimension line
     const thicknessDimLine = document.createElementNS(svgNS, "line");
     thicknessDimLine.setAttribute("x1", (centerX - scaledThickness/2).toString());
-    thicknessDimLine.setAttribute("y1", (centerY - radius - 15).toString());
+    thicknessDimLine.setAttribute("y1", (centerY - radius - 25).toString()); // More space
     thicknessDimLine.setAttribute("x2", (centerX + scaledThickness/2).toString());
-    thicknessDimLine.setAttribute("y2", (centerY - radius - 15).toString());
+    thicknessDimLine.setAttribute("y2", (centerY - radius - 25).toString()); // More space
     thicknessDimLine.setAttribute("stroke", strokeColor);
     thicknessDimLine.setAttribute("stroke-width", "1");
     svg.appendChild(thicknessDimLine);
@@ -519,9 +621,9 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     // Left arrow
     const thicknessLeftArrow = document.createElementNS(svgNS, "polygon");
     thicknessLeftArrow.setAttribute("points", 
-      `${centerX - scaledThickness/2},${centerY - radius - 15} ` + 
-      `${centerX - scaledThickness/2 + 6},${centerY - radius - 18} ` + 
-      `${centerX - scaledThickness/2 + 6},${centerY - radius - 12}`
+      `${centerX - scaledThickness/2},${centerY - radius - 25} ` + 
+      `${centerX - scaledThickness/2 + 6},${centerY - radius - 28} ` + 
+      `${centerX - scaledThickness/2 + 6},${centerY - radius - 22}`
     );
     thicknessLeftArrow.setAttribute("fill", strokeColor);
     svg.appendChild(thicknessLeftArrow);
@@ -529,9 +631,9 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     // Right arrow
     const thicknessRightArrow = document.createElementNS(svgNS, "polygon");
     thicknessRightArrow.setAttribute("points", 
-      `${centerX + scaledThickness/2},${centerY - radius - 15} ` + 
-      `${centerX + scaledThickness/2 - 6},${centerY - radius - 18} ` + 
-      `${centerX + scaledThickness/2 - 6},${centerY - radius - 12}`
+      `${centerX + scaledThickness/2},${centerY - radius - 25} ` + 
+      `${centerX + scaledThickness/2 - 6},${centerY - radius - 28} ` + 
+      `${centerX + scaledThickness/2 - 6},${centerY - radius - 22}`
     );
     thicknessRightArrow.setAttribute("fill", strokeColor);
     svg.appendChild(thicknessRightArrow);
@@ -541,7 +643,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     thicknessExtLine1.setAttribute("x1", (centerX - scaledThickness/2).toString());
     thicknessExtLine1.setAttribute("y1", (centerY - radius).toString());
     thicknessExtLine1.setAttribute("x2", (centerX - scaledThickness/2).toString());
-    thicknessExtLine1.setAttribute("y2", (centerY - radius - 15).toString());
+    thicknessExtLine1.setAttribute("y2", (centerY - radius - 25).toString()); // More space
     thicknessExtLine1.setAttribute("stroke", strokeColor);
     thicknessExtLine1.setAttribute("stroke-width", "0.75");
     thicknessExtLine1.setAttribute("stroke-dasharray", "4 2");
@@ -551,18 +653,18 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     thicknessExtLine2.setAttribute("x1", (centerX + scaledThickness/2).toString());
     thicknessExtLine2.setAttribute("y1", (centerY - radius).toString());
     thicknessExtLine2.setAttribute("x2", (centerX + scaledThickness/2).toString());
-    thicknessExtLine2.setAttribute("y2", (centerY - radius - 15).toString());
+    thicknessExtLine2.setAttribute("y2", (centerY - radius - 25).toString()); // More space
     thicknessExtLine2.setAttribute("stroke", strokeColor);
     thicknessExtLine2.setAttribute("stroke-width", "0.75");
     thicknessExtLine2.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(thicknessExtLine2);
     
-    // Add diameter dimension on right side
+    // Add diameter dimension on right side - with MORE space to prevent overlap
     // Background for better visibility
     const diameterBg = document.createElementNS(svgNS, "rect");
     const diameterTextWidth = 80;
     const diameterTextHeight = 18;
-    diameterBg.setAttribute("x", (centerX + scaledThickness/2 + 25).toString());
+    diameterBg.setAttribute("x", (centerX + scaledThickness/2 + 45).toString()); // Much more space
     diameterBg.setAttribute("y", (centerY - diameterTextHeight/2).toString());
     diameterBg.setAttribute("width", diameterTextWidth.toString());
     diameterBg.setAttribute("height", diameterTextHeight.toString());
@@ -574,7 +676,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     
     // Diameter text
     const diameterText = document.createElementNS(svgNS, "text");
-    diameterText.setAttribute("x", (centerX + scaledThickness/2 + 65).toString());
+    diameterText.setAttribute("x", (centerX + scaledThickness/2 + 85).toString()); // Much more space
     diameterText.setAttribute("y", (centerY + 5).toString());
     diameterText.setAttribute("text-anchor", "middle");
     diameterText.setAttribute("font-family", "Inter, system-ui, sans-serif");
@@ -584,7 +686,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     svg.appendChild(diameterText);
     
     // Draw diameter dimension line
-    const dimLineX = centerX + scaledThickness/2 + 15;
+    const dimLineX = centerX + scaledThickness/2 + 30; // More space
     const diameterDimLine = document.createElementNS(svgNS, "line");
     diameterDimLine.setAttribute("x1", dimLineX.toString());
     diameterDimLine.setAttribute("y1", (centerY - radius).toString());
@@ -636,12 +738,94 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     diameterExtLine2.setAttribute("stroke-dasharray", "4 2");
     svg.appendChild(diameterExtLine2);
     
-    // Add bore dimension on left side
+    // Add inner diameter dimension on far right side - more space
+    // Only if not an idler (since idlers don't have inner diameter)
+    if (!isIdler) {
+      const innerDimLineX = centerX + scaledThickness/2 + 60; // Even more space
+      const innerRadius = scaledDiameter * 0.35; // Half of 70%
+      
+      // Background for inner diameter
+      const innerDiameterBg = document.createElementNS(svgNS, "rect");
+      const innerDiameterTextWidth = 100;
+      const innerDiameterTextHeight = 18;
+      innerDiameterBg.setAttribute("x", (innerDimLineX + 15).toString());
+      innerDiameterBg.setAttribute("y", (centerY - innerDiameterTextHeight/2).toString());
+      innerDiameterBg.setAttribute("width", innerDiameterTextWidth.toString());
+      innerDiameterBg.setAttribute("height", innerDiameterTextHeight.toString());
+      innerDiameterBg.setAttribute("rx", "4");
+      innerDiameterBg.setAttribute("ry", "4");
+      innerDiameterBg.setAttribute("fill", fillColor);
+      innerDiameterBg.setAttribute("fill-opacity", "0.9");
+      svg.appendChild(innerDiameterBg);
+      
+      // Inner diameter text
+      const innerDiameterText = document.createElementNS(svgNS, "text");
+      innerDiameterText.setAttribute("x", (innerDimLineX + 65).toString());
+      innerDiameterText.setAttribute("y", (centerY + 5).toString());
+      innerDiameterText.setAttribute("text-anchor", "middle");
+      innerDiameterText.setAttribute("font-family", "Inter, system-ui, sans-serif");
+      innerDiameterText.setAttribute("font-size", "12");
+      innerDiameterText.setAttribute("fill", textColor);
+      innerDiameterText.textContent = `Ø${Math.round(originalParams.diameter * 0.7)} ${unit}`;
+      svg.appendChild(innerDiameterText);
+      
+      // Draw inner diameter dimension line
+      const innerDiameterDimLine = document.createElementNS(svgNS, "line");
+      innerDiameterDimLine.setAttribute("x1", innerDimLineX.toString());
+      innerDiameterDimLine.setAttribute("y1", (centerY - innerRadius).toString());
+      innerDiameterDimLine.setAttribute("x2", innerDimLineX.toString());
+      innerDiameterDimLine.setAttribute("y2", (centerY + innerRadius).toString());
+      innerDiameterDimLine.setAttribute("stroke", strokeColor);
+      innerDiameterDimLine.setAttribute("stroke-width", "1");
+      svg.appendChild(innerDiameterDimLine);
+      
+      // Arrow heads for inner diameter line
+      const innerDiameterTopArrow = document.createElementNS(svgNS, "polygon");
+      innerDiameterTopArrow.setAttribute("points", 
+        `${innerDimLineX},${centerY - innerRadius} ` + 
+        `${innerDimLineX - 3},${centerY - innerRadius + 6} ` + 
+        `${innerDimLineX + 3},${centerY - innerRadius + 6}`
+      );
+      innerDiameterTopArrow.setAttribute("fill", strokeColor);
+      svg.appendChild(innerDiameterTopArrow);
+      
+      const innerDiameterBottomArrow = document.createElementNS(svgNS, "polygon");
+      innerDiameterBottomArrow.setAttribute("points", 
+        `${innerDimLineX},${centerY + innerRadius} ` + 
+        `${innerDimLineX - 3},${centerY + innerRadius - 6} ` + 
+        `${innerDimLineX + 3},${centerY + innerRadius - 6}`
+      );
+      innerDiameterBottomArrow.setAttribute("fill", strokeColor);
+      svg.appendChild(innerDiameterBottomArrow);
+      
+      // Add inner diameter extension lines
+      const innerDiameterExtLine1 = document.createElementNS(svgNS, "line");
+      innerDiameterExtLine1.setAttribute("x1", (centerX + scaledThickness/2).toString());
+      innerDiameterExtLine1.setAttribute("y1", (centerY - innerRadius).toString());
+      innerDiameterExtLine1.setAttribute("x2", innerDimLineX.toString());
+      innerDiameterExtLine1.setAttribute("y2", (centerY - innerRadius).toString());
+      innerDiameterExtLine1.setAttribute("stroke", strokeColor);
+      innerDiameterExtLine1.setAttribute("stroke-width", "0.75");
+      innerDiameterExtLine1.setAttribute("stroke-dasharray", "4 2");
+      svg.appendChild(innerDiameterExtLine1);
+      
+      const innerDiameterExtLine2 = document.createElementNS(svgNS, "line");
+      innerDiameterExtLine2.setAttribute("x1", (centerX + scaledThickness/2).toString());
+      innerDiameterExtLine2.setAttribute("y1", (centerY + innerRadius).toString());
+      innerDiameterExtLine2.setAttribute("x2", innerDimLineX.toString());
+      innerDiameterExtLine2.setAttribute("y2", (centerY + innerRadius).toString());
+      innerDiameterExtLine2.setAttribute("stroke", strokeColor);
+      innerDiameterExtLine2.setAttribute("stroke-width", "0.75");
+      innerDiameterExtLine2.setAttribute("stroke-dasharray", "4 2");
+      svg.appendChild(innerDiameterExtLine2);
+    }
+    
+    // Add bore dimension on left side - with more space
     // Background for better visibility
     const boreBg = document.createElementNS(svgNS, "rect");
     const boreTextWidth = 80;
     const boreTextHeight = 18;
-    boreBg.setAttribute("x", (centerX - scaledThickness/2 - 25 - boreTextWidth).toString());
+    boreBg.setAttribute("x", (centerX - scaledThickness/2 - 45 - boreTextWidth).toString()); // More space
     boreBg.setAttribute("y", (centerY - boreTextHeight/2).toString());
     boreBg.setAttribute("width", boreTextWidth.toString());
     boreBg.setAttribute("height", boreTextHeight.toString());
@@ -653,7 +837,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     
     // Bore text
     const boreText = document.createElementNS(svgNS, "text");
-    boreText.setAttribute("x", (centerX - scaledThickness/2 - 25 - boreTextWidth/2).toString());
+    boreText.setAttribute("x", (centerX - scaledThickness/2 - 45 - boreTextWidth/2).toString()); // More space
     boreText.setAttribute("y", (centerY + 5).toString());
     boreText.setAttribute("text-anchor", "middle");
     boreText.setAttribute("font-family", "Inter, system-ui, sans-serif");
@@ -663,7 +847,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     svg.appendChild(boreText);
     
     // Draw bore dimension indicator
-    const boreDimLineX = centerX - scaledThickness/2 - 15;
+    const boreDimLineX = centerX - scaledThickness/2 - 25; // More space
     
     // Draw a centered horizontal line for the bore
     const boreDimLine = document.createElementNS(svgNS, "line");

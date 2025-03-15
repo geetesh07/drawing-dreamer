@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useEffect, useState } from "react";
 import { DrawingDimensions, generateDXF } from "@/utils/drawingUtils";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
@@ -13,6 +14,20 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
   dimensions,
   drawingRef
 }) => {
+  const [templateImage, setTemplateImage] = useState<HTMLImageElement | null>(null);
+  
+  // Load template image on component mount
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // Important for CORS
+    img.src = "/0298f9f8-b5de-477f-83fa-22ef2d922de2.png";
+    img.onload = () => {
+      setTemplateImage(img);
+    };
+    img.onerror = (err) => {
+      console.error("Error loading template image:", err);
+    };
+  }, []);
   
   const exportAsDXF = () => {
     try {
@@ -67,11 +82,31 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      // Add the template image as background
-      const templatePath = '/0298f9f8-b5de-477f-83fa-22ef2d922de2.png';
+      // First create a white background covering the whole page
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
       
-      // First add the template
-      pdf.addImage(templatePath, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      // Add the template if available
+      if (templateImage) {
+        try {
+          // Convert the preloaded image to a canvas, then to a dataURL
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = templateImage.width;
+          tempCanvas.height = templateImage.height;
+          const ctx = tempCanvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(templateImage, 0, 0);
+            const templateDataUrl = tempCanvas.toDataURL('image/png');
+            // Add the template to the PDF
+            pdf.addImage(templateDataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          }
+        } catch (templateError) {
+          console.error("Error adding template from preloaded image:", templateError);
+          // Continue without template if there's an error
+        }
+      } else {
+        console.log("Template image not loaded, continuing without template");
+      }
       
       // Calculate the drawing area based on template 
       // These values are adjusted for the specific template

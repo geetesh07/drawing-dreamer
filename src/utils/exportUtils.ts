@@ -43,7 +43,10 @@ export const handleExportPDF = async (
     const pdf = await generatePDF(componentRef, title, inputParams, additionalDetails);
     
     // Save the PDF
-    pdf.save(`${title.toLowerCase()}_drawing.pdf`);
+    if (pdf) {
+      pdf.save(`${title.toLowerCase()}_drawing.pdf`);
+    }
+    
     toast.dismiss();
     toast.success(`${title} PDF exported successfully`);
   } catch (error) {

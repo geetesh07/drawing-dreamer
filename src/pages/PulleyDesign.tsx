@@ -19,22 +19,16 @@ import {
   generateDXF
 } from "@/utils/drawingUtils";
 
-// Define the input parameters type
 interface InputParameters {
-  // Common parameters
   beltWidth: number;
   beltSpeed: number;
   capacity: number;
   material: string;
   inclination: number;
-  
-  // Unit
   unit: "mm" | "cm" | "m" | "in";
 }
 
-// Parameters for different components
 interface CalculatedParameters {
-  // Pulley parameters
   pulley: {
     diameter: number;
     thickness: number;
@@ -48,7 +42,6 @@ interface CalculatedParameters {
   };
 }
 
-// Default input parameters
 const DEFAULT_INPUT_PARAMETERS: InputParameters = {
   beltWidth: 1000,
   beltSpeed: 1.5,
@@ -63,15 +56,11 @@ const PulleyDesign = () => {
   const [calculatedParams, setCalculatedParams] = useState<CalculatedParameters | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("input");
-  
-  // Drawing refs for exports
   const pulleyRef = useRef<HTMLDivElement>(null);
-  
-  // Handle input change
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    // Handle numeric values
+
     if (["beltWidth", "beltSpeed", "capacity", "inclination"].includes(name)) {
       const numValue = parseFloat(value);
       if (!isNaN(numValue) && numValue >= 0) {
@@ -81,15 +70,13 @@ const PulleyDesign = () => {
         }));
       }
     } else {
-      // Handle string values
       setInputParams(prev => ({
         ...prev,
         [name]: value
       }));
     }
   };
-  
-  // Handle unit change
+
   const handleUnitChange = (unit: InputParameters["unit"]) => {
     setInputParams(prev => ({
       ...prev,
@@ -97,24 +84,20 @@ const PulleyDesign = () => {
     }));
   };
 
-  // Calculate parameters based on formulas
   const calculateParameters = () => {
     try {
       const { beltWidth, beltSpeed, capacity, material, inclination, unit } = inputParams;
-      
-      // Validate inputs
+
       if (beltWidth <= 0 || beltSpeed <= 0 || capacity <= 0) {
         toast.error("All values must be positive");
         return;
       }
-      
-      // Convert belt width to mm for calculations (if needed)
+
       let beltWidthMm = beltWidth;
       if (unit === "cm") beltWidthMm = beltWidth * 10;
       if (unit === "m") beltWidthMm = beltWidth * 1000;
       if (unit === "in") beltWidthMm = beltWidth * 25.4;
-      
-      // Material density approximation (kg/m³)
+
       const materialDensity = {
         coal: 800,
         sand: 1500,
@@ -122,47 +105,31 @@ const PulleyDesign = () => {
         ore: 2500,
         grain: 750
       }[material] || 1000;
-      
-      // ------------------------ PULLEY CALCULATIONS --------------------------
-      
-      // Pulley diameter based on belt width and speed
+
       let pulleyDiameter = 0;
-      
-      // Determine minimum pulley diameter based on belt width and speed
+
       if (beltSpeed < 2.5) {
-        pulleyDiameter = beltWidthMm * 0.5; // 50% of belt width for low speeds
+        pulleyDiameter = beltWidthMm * 0.5;
       } else if (beltSpeed < 5) {
-        pulleyDiameter = beltWidthMm * 0.6; // 60% of belt width for medium speeds
+        pulleyDiameter = beltWidthMm * 0.6;
       } else {
-        pulleyDiameter = beltWidthMm * 0.7; // 70% of belt width for high speeds
+        pulleyDiameter = beltWidthMm * 0.7;
       }
-      
-      // Adjust for capacity
-      const capacityFactor = 1 + (capacity / 5000); // Increase diameter for higher capacity
+
+      const capacityFactor = 1 + (capacity / 5000);
       pulleyDiameter *= capacityFactor;
-      
-      // Round to standard sizes
-      pulleyDiameter = Math.ceil(pulleyDiameter / 50) * 50; // Round up to nearest 50mm
-      
-      // Pulley face width is wider than belt width to accommodate tracking
+
+      pulleyDiameter = Math.ceil(pulleyDiameter / 50) * 50;
+
       const pulleyThickness = beltWidthMm * 1.2;
-      
-      // Shaft diameter based on load and pulley diameter
-      const loadFactor = Math.sqrt(capacity / 100); // Simple factor for load
-      const pulleyBoreDiameter = Math.max(50, pulleyDiameter * 0.2 * loadFactor); // Minimum 50mm
-      
-      // Inner diameter where V-groove extends to
+      const loadFactor = Math.sqrt(capacity / 100);
+      const pulleyBoreDiameter = Math.max(50, pulleyDiameter * 0.2 * loadFactor);
       const pulleyInnerDiameter = pulleyDiameter * 0.7;
-      
-      // Groove dimensions
       const grooveDepth = pulleyDiameter * 0.05;
       const grooveWidth = pulleyDiameter * 0.1;
-      
-      // Keyway dimensions based on shaft size
       const keyWayWidth = Math.max(8, pulleyBoreDiameter * 0.25);
       const keyWayDepth = keyWayWidth * 0.5;
-      
-      // Create calculated parameters
+
       const params: CalculatedParameters = {
         pulley: {
           diameter: pulleyDiameter,
@@ -176,12 +143,9 @@ const PulleyDesign = () => {
           unit: unit
         }
       };
-      
+
       setCalculatedParams(params);
-      
-      // Switch to results tab
       setActiveTab("results");
-      
       toast.success("Parameters calculated successfully");
     } catch (error) {
       console.error("Calculation error:", error);
@@ -189,7 +153,6 @@ const PulleyDesign = () => {
     }
   };
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -200,7 +163,7 @@ const PulleyDesign = () => {
       }
     }
   };
-  
+
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -375,14 +338,12 @@ const PulleyDesign = () => {
                 animate="visible"
                 className="space-y-8"
               >
-                {/* Calculated Parameters Card */}
                 <motion.div variants={itemVariants} className="bg-card border rounded-lg shadow overflow-hidden">
                   <div className="p-4 bg-muted/30 border-b">
                     <h2 className="text-xl font-semibold">Calculated Parameters</h2>
                   </div>
                   <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Belt Parameters */}
                       <div>
                         <h3 className="text-lg font-medium mb-3">Input Parameters</h3>
                         <div className="space-y-2">
@@ -405,7 +366,6 @@ const PulleyDesign = () => {
                         </div>
                       </div>
                       
-                      {/* Pulley Parameters */}
                       <div>
                         <h3 className="text-lg font-medium mb-3">Calculated Dimensions</h3>
                         <div className="space-y-2">
@@ -443,7 +403,6 @@ const PulleyDesign = () => {
                       </div>
                     </div>
                     
-                    {/* Calculation Details */}
                     <div className="mt-6 pt-6 border-t">
                       <h3 className="text-lg font-medium mb-3">Calculation Details</h3>
                       <div className="text-sm text-muted-foreground space-y-2">
@@ -460,7 +419,6 @@ const PulleyDesign = () => {
                   </div>
                 </motion.div>
                 
-                {/* Pulley Drawing */}
                 <motion.div variants={itemVariants} className="bg-card border rounded-lg shadow overflow-hidden">
                   <div className="p-4 bg-muted/30 border-b flex justify-between items-center">
                     <h2 className="text-xl font-semibold">Pulley Drawing</h2>
@@ -468,11 +426,10 @@ const PulleyDesign = () => {
                   
                   <div ref={pulleyRef} className="bg-white p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Front View */}
                       <div className="relative">
                         <PulleyDrawingArea 
                           parameters={calculatedParams.pulley}
-                          view="front"
+                          view="side"
                           className="w-full"
                         />
                         <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
@@ -480,7 +437,6 @@ const PulleyDesign = () => {
                         </div>
                       </div>
                       
-                      {/* Side View */}
                       <div className="relative">
                         <PulleyDrawingArea 
                           parameters={calculatedParams.pulley}
@@ -493,7 +449,6 @@ const PulleyDesign = () => {
                       </div>
                     </div>
                     
-                    {/* Metadata */}
                     <div className="mt-6 bg-white/90 backdrop-blur-sm border border-border rounded-md p-4 shadow-sm">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>

@@ -37,16 +37,14 @@ const IdlerDrawing: React.FC<IdlerDrawingProps> = ({
           <div className="relative">
             <PulleyDrawingArea 
               parameters={{
-                ...calculatedParams.idler,
                 diameter: calculatedParams.idler.outerDiameter,
                 thickness: calculatedParams.idler.length,
                 boreDiameter: calculatedParams.idler.innerDiameter,
-                // Additional parameters needed for PulleyDrawingArea
-                innerDiameter: calculatedParams.idler.outerDiameter * 0.7,
                 grooveDepth: 0,
                 grooveWidth: 0,
                 keyWayWidth: calculatedParams.idler.innerDiameter * 0.3,
-                keyWayDepth: calculatedParams.idler.innerDiameter * 0.15
+                keyWayDepth: calculatedParams.idler.innerDiameter * 0.15,
+                unit: calculatedParams.idler.unit
               }}
               view="top"
               className="w-full"
@@ -60,16 +58,14 @@ const IdlerDrawing: React.FC<IdlerDrawingProps> = ({
           <div className="relative">
             <PulleyDrawingArea 
               parameters={{
-                ...calculatedParams.idler,
                 diameter: calculatedParams.idler.outerDiameter,
                 thickness: calculatedParams.idler.length,
                 boreDiameter: calculatedParams.idler.innerDiameter,
-                // Additional parameters needed for PulleyDrawingArea
-                innerDiameter: calculatedParams.idler.outerDiameter * 0.7,
                 grooveDepth: 0,
                 grooveWidth: 0,
                 keyWayWidth: calculatedParams.idler.innerDiameter * 0.3,
-                keyWayDepth: calculatedParams.idler.innerDiameter * 0.15
+                keyWayDepth: calculatedParams.idler.innerDiameter * 0.15,
+                unit: calculatedParams.idler.unit
               }}
               view="side"
               className="w-full"

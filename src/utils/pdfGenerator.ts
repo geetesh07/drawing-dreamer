@@ -8,7 +8,7 @@ export const generatePDF = async (
   title: string,
   inputParams: InputParameters,
   additionalDetails: Record<string, string>
-): Promise<void> => {
+): Promise<jsPDF> => {
   if (!componentRef.current) {
     throw new Error("Drawing element not found");
   }

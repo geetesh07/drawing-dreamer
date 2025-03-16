@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import PulleyDrawingArea from "@/components/pulley/PulleyDrawingArea"; // Updated import path
+import PulleyDrawingArea from "@/components/pulley/PulleyDrawingArea";
 import { CalculatedParameters } from "@/types/unifiedGenerator";
 
 interface PulleyDrawingProps {
@@ -36,7 +36,14 @@ const PulleyDrawing: React.FC<PulleyDrawingProps> = ({
           {/* Front view */}
           <div className="relative">
             <PulleyDrawingArea 
-              parameters={calculatedParams.pulley}
+              parameters={{
+                diameter: calculatedParams.pulley.diameter,
+                thickness: calculatedParams.pulley.thickness,
+                boreDiameter: calculatedParams.pulley.boreDiameter,
+                innerDiameter: calculatedParams.pulley.innerDiameter,
+                grooveDepth: calculatedParams.pulley.grooveDepth,
+                unit: calculatedParams.pulley.unit
+              }}
               view="top"
               className="w-full"
             />
@@ -48,7 +55,14 @@ const PulleyDrawing: React.FC<PulleyDrawingProps> = ({
           {/* Side view */}
           <div className="relative">
             <PulleyDrawingArea 
-              parameters={calculatedParams.pulley}
+              parameters={{
+                diameter: calculatedParams.pulley.diameter,
+                thickness: calculatedParams.pulley.thickness,
+                boreDiameter: calculatedParams.pulley.boreDiameter,
+                innerDiameter: calculatedParams.pulley.innerDiameter,
+                grooveDepth: calculatedParams.pulley.grooveDepth,
+                unit: calculatedParams.pulley.unit
+              }}
               view="side"
               className="w-full"
             />
@@ -60,7 +74,7 @@ const PulleyDrawing: React.FC<PulleyDrawingProps> = ({
         
         {/* Metadata */}
         <div className="mt-6 bg-white/90 backdrop-blur-sm border border-border rounded-md p-4 shadow-sm">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <div className="text-xs font-medium text-muted-foreground">PULLEY DIAMETER</div>
               <div className="text-sm font-medium mt-1">
@@ -77,12 +91,6 @@ const PulleyDrawing: React.FC<PulleyDrawingProps> = ({
               <div className="text-xs font-medium text-muted-foreground">BORE DIAMETER</div>
               <div className="text-sm font-medium mt-1">
                 Ø{calculatedParams.pulley.boreDiameter} {calculatedParams.pulley.unit}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-muted-foreground">INNER DIAMETER</div>
-              <div className="text-sm font-medium mt-1">
-                Ø{calculatedParams.pulley.innerDiameter} {calculatedParams.pulley.unit}
               </div>
             </div>
           </div>

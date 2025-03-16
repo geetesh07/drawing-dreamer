@@ -75,7 +75,7 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     const centerX = containerSize.width / 2;
     const centerY = containerSize.height / 2;
     
-    // Create SVG element - fixed by passing the ref object, not the element itself
+    // Create SVG element
     const svg = createSvgElement(containerRef, containerSize.width, containerSize.height);
     if (!svg) return;
 

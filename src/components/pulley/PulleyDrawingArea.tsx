@@ -75,8 +75,8 @@ const PulleyDrawingArea: React.FC<PulleyDrawingAreaProps> = ({
     const centerX = containerSize.width / 2;
     const centerY = containerSize.height / 2;
     
-    // Create SVG element
-    const svg = createSvgElement(containerRef.current, containerSize.width, containerSize.height);
+    // Create SVG element - fixed by passing the ref object, not the element itself
+    const svg = createSvgElement(containerRef, containerSize.width, containerSize.height);
     if (!svg) return;
 
     // Add shadow filter definition

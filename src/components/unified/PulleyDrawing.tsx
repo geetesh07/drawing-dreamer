@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import PulleyDrawingArea from "@/components/pulley/PulleyDrawingArea";
+import PulleyDrawingArea from "@/components/pulley/PulleyDrawingArea"; // Updated import path
 import { CalculatedParameters } from "@/types/unifiedGenerator";
 
 interface PulleyDrawingProps {

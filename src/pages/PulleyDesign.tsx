@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -8,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import DrawingArea from "@/components/DrawingArea";
-import PulleyDrawingArea from "@/components/PulleyDrawingArea";
+import PulleyDrawingArea from "@/components/pulley/PulleyDrawingArea"; // Fixed import path
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { 

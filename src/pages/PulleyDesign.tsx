@@ -1,159 +1,370 @@
-
 import React, { useState, useRef } from "react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import DrawingArea from "@/components/DrawingArea";
-import PulleyDrawingArea from "@/components/pulley/PulleyDrawingArea"; // Fixed import path
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
-import { 
-  DrawingDimensions, 
-  DEFAULT_DIMENSIONS,
-  ViewType,
-  formatWithUnit,
-  generateDXF
-} from "@/utils/drawingUtils";
 
-interface InputParameters {
-  beltWidth: number;
-  beltSpeed: number;
-  capacity: number;
-  material: string;
-  inclination: number;
+// Define the pulley parameters type
+interface PulleyParameters {
+  diameter: number;
+  thickness: number;
+  boreDiameter: number;
+  grooveDepth: number;
+  grooveWidth: number;
+  keyWayWidth: number;
+  keyWayDepth: number;
   unit: "mm" | "cm" | "m" | "in";
 }
 
-interface CalculatedParameters {
-  pulley: {
-    diameter: number;
-    thickness: number;
-    boreDiameter: number;
-    innerDiameter: number;
-    grooveDepth: number;
-    grooveWidth: number;
-    keyWayWidth: number;
-    keyWayDepth: number;
-    unit: "mm" | "cm" | "m" | "in";
-  };
-}
+// Default pulley parameters
+const DEFAULT_PARAMETERS: PulleyParameters = {
+  diameter: 100,
+  thickness: 20,
+  boreDiameter: 25,
+  grooveDepth: 5,
+  grooveWidth: 10,
+  keyWayWidth: 6,
+  keyWayDepth: 3,
+  unit: "mm",
+};
 
-const DEFAULT_INPUT_PARAMETERS: InputParameters = {
-  beltWidth: 1000,
-  beltSpeed: 1.5,
-  capacity: 500,
-  material: "coal",
-  inclination: 10,
-  unit: "mm"
+// PulleyDrawingArea component
+const PulleyDrawingArea: React.FC<{
+  parameters: PulleyParameters;
+  view: "top" | "side";
+  className?: string;
+}> = ({ parameters, view, className }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Set canvas dimensions
+    const canvasSize = 400;
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
+    
+    // Calculate scale to fit drawing in canvas
+    const maxDimension = Math.max(parameters.diameter, parameters.thickness) * 1.5;
+    const scale = (canvasSize * 0.8) / maxDimension;
+    
+    // Center point of canvas
+    const centerX = canvasSize / 2;
+    const centerY = canvasSize / 2;
+    
+    // Draw based on view
+    if (view === "top") {
+      drawTopView(ctx, centerX, centerY, scale);
+    } else {
+      drawSideView(ctx, centerX, centerY, scale);
+    }
+  }, [parameters, view]);
+  
+  // Draw top view
+  const drawTopView = (
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    scale: number
+  ) => {
+    const { diameter, boreDiameter, keyWayWidth, keyWayDepth } = parameters;
+    
+    // Draw outer circle
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, (diameter / 2) * scale, 0, Math.PI * 2);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw bore circle
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, (boreDiameter / 2) * scale, 0, Math.PI * 2);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw keyway
+    const keyWayPositionX = centerX - (keyWayWidth / 2) * scale;
+    const keyWayPositionY = centerY - (boreDiameter / 2) * scale;
+    const keyWayHeight = (boreDiameter / 2 + keyWayDepth) * scale;
+    
+    ctx.beginPath();
+    ctx.rect(keyWayPositionX, centerY - keyWayHeight, keyWayWidth * scale, keyWayHeight);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw dimension lines
+    drawDimensionLines(ctx, centerX, centerY, scale, "top");
+  };
+  
+  // Draw side view
+  const drawSideView = (
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    scale: number
+  ) => {
+    const { diameter, thickness, boreDiameter, grooveDepth, grooveWidth } = parameters;
+    
+    // Calculate dimensions
+    const pulleyRadius = (diameter / 2) * scale;
+    const pulleyThickness = thickness * scale;
+    const boreRadius = (boreDiameter / 2) * scale;
+    const grooveDepthScaled = grooveDepth * scale;
+    const grooveWidthScaled = grooveWidth * scale;
+    
+    // Calculate positions
+    const topY = centerY - pulleyThickness / 2;
+    const bottomY = centerY + pulleyThickness / 2;
+    const leftX = centerX - pulleyRadius;
+    const rightX = centerX + pulleyRadius;
+    
+    // Draw main body (outer rectangle)
+    ctx.beginPath();
+    ctx.rect(leftX, topY, pulleyRadius * 2, pulleyThickness);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw bore (inner rectangle)
+    ctx.beginPath();
+    ctx.rect(centerX - boreRadius, topY, boreRadius * 2, pulleyThickness);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw V-groove
+    const grooveTop = centerY - grooveWidthScaled / 2;
+    const grooveBottom = centerY + grooveWidthScaled / 2;
+    
+    // Left side of V-groove
+    ctx.beginPath();
+    ctx.moveTo(leftX, grooveTop);
+    ctx.lineTo(leftX - grooveDepthScaled, centerY);
+    ctx.lineTo(leftX, grooveBottom);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Right side of V-groove
+    ctx.beginPath();
+    ctx.moveTo(rightX, grooveTop);
+    ctx.lineTo(rightX + grooveDepthScaled, centerY);
+    ctx.lineTo(rightX, grooveBottom);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw keyway (visible in side view as a small rectangle)
+    const keyWayWidth = parameters.keyWayWidth * scale;
+    const keyWayDepth = parameters.keyWayDepth * scale;
+    
+    ctx.beginPath();
+    ctx.rect(centerX - boreRadius - keyWayDepth, centerY - keyWayWidth / 2, keyWayDepth, keyWayWidth);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw dimension lines
+    drawDimensionLines(ctx, centerX, centerY, scale, "side");
+  };
+  
+  // Draw dimension lines
+  const drawDimensionLines = (
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    scale: number,
+    view: "top" | "side"
+  ) => {
+    const { diameter, thickness, boreDiameter } = parameters;
+    
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#666";
+    ctx.fillStyle = "#666";
+    ctx.font = "12px Arial";
+    
+    if (view === "top") {
+      // Draw diameter dimension line
+      ctx.beginPath();
+      ctx.moveTo(centerX - (diameter / 2) * scale, centerY + (diameter / 2) * scale + 20);
+      ctx.lineTo(centerX + (diameter / 2) * scale, centerY + (diameter / 2) * scale + 20);
+      ctx.stroke();
+      
+      // Draw diameter text
+      ctx.fillText(`Ø${diameter}${parameters.unit}`, centerX, centerY + (diameter / 2) * scale + 40);
+      
+      // Draw bore diameter dimension line
+      ctx.beginPath();
+      ctx.moveTo(centerX - (boreDiameter / 2) * scale, centerY - (boreDiameter / 2) * scale - 20);
+      ctx.lineTo(centerX + (boreDiameter / 2) * scale, centerY - (boreDiameter / 2) * scale - 20);
+      ctx.stroke();
+      
+      // Draw bore diameter text
+      ctx.fillText(`Ø${boreDiameter}${parameters.unit}`, centerX, centerY - (boreDiameter / 2) * scale - 30);
+    } else {
+      // Draw thickness dimension line
+      ctx.beginPath();
+      ctx.moveTo(centerX - (diameter / 2) * scale - 20, centerY - (thickness / 2) * scale);
+      ctx.lineTo(centerX - (diameter / 2) * scale - 20, centerY + (thickness / 2) * scale);
+      ctx.stroke();
+      
+      // Draw thickness text
+      ctx.fillText(`${thickness}${parameters.unit}`, centerX - (diameter / 2) * scale - 40, centerY);
+      
+      // Draw groove depth dimension line
+      ctx.beginPath();
+      ctx.moveTo(centerX + (diameter / 2) * scale + 20, centerY);
+      ctx.lineTo(centerX + (diameter / 2) * scale + 20 + parameters.grooveDepth * scale, centerY);
+      ctx.stroke();
+      
+      // Draw groove depth text
+      ctx.fillText(`${parameters.grooveDepth}${parameters.unit}`, centerX + (diameter / 2) * scale + 30, centerY - 10);
+    }
+    
+    ctx.setLineDash([]);
+  };
+  
+  return <canvas ref={canvasRef} className={className} />;
 };
 
 const PulleyDesign = () => {
-  const [inputParams, setInputParams] = useState<InputParameters>(DEFAULT_INPUT_PARAMETERS);
-  const [calculatedParams, setCalculatedParams] = useState<CalculatedParameters | null>(null);
+  const [parameters, setParameters] = useState<PulleyParameters>(DEFAULT_PARAMETERS);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("input");
-  const pulleyRef = useRef<HTMLDivElement>(null);
+  const drawingRef = useRef<HTMLDivElement>(null);
 
+  // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
-    if (["beltWidth", "beltSpeed", "capacity", "inclination"].includes(name)) {
-      const numValue = parseFloat(value);
-      if (!isNaN(numValue) && numValue >= 0) {
-        setInputParams(prev => ({
-          ...prev,
-          [name]: numValue
-        }));
-      }
-    } else {
-      setInputParams(prev => ({
-        ...prev,
-        [name]: value
-      }));
+    const numValue = parseFloat(value);
+    
+    if (name === "boreDiameter" && numValue >= parameters.diameter) {
+      toast.error("Bore diameter must be smaller than the pulley diameter");
+      return;
     }
-  };
-
-  const handleUnitChange = (unit: InputParameters["unit"]) => {
-    setInputParams(prev => ({
+    
+    setParameters((prev) => ({
       ...prev,
-      unit
+      [name]: numValue,
     }));
   };
 
-  const calculateParameters = () => {
-    try {
-      const { beltWidth, beltSpeed, capacity, material, inclination, unit } = inputParams;
+  // Handle unit change
+  const handleUnitChange = (unit: PulleyParameters["unit"]) => {
+    setParameters((prev) => ({
+      ...prev,
+      unit,
+    }));
+  };
 
-      if (beltWidth <= 0 || beltSpeed <= 0 || capacity <= 0) {
-        toast.error("All values must be positive");
+  // Generate drawing (update parameters)
+  const handleGenerateDrawing = () => {
+    // Validate parameters
+    if (parameters.diameter <= 0 || parameters.thickness <= 0 || parameters.boreDiameter <= 0) {
+      toast.error("All dimensions must be positive values");
+      return;
+    }
+    
+    if (parameters.boreDiameter >= parameters.diameter) {
+      toast.error("Bore diameter must be smaller than the pulley diameter");
+      return;
+    }
+    
+    if (parameters.grooveDepth <= 0 || parameters.grooveWidth <= 0) {
+      toast.error("Groove dimensions must be positive values");
+      return;
+    }
+    
+    if (parameters.keyWayWidth <= 0 || parameters.keyWayDepth <= 0) {
+      toast.error("Keyway dimensions must be positive values");
+      return;
+    }
+    
+    // Show success message
+    toast.success("Pulley drawing updated successfully");
+  };
+
+  // Export as PDF
+  const handleExportPDF = async () => {
+    try {
+      if (!drawingRef.current) {
+        toast.error("Drawing not found. Please generate a drawing first.");
         return;
       }
-
-      let beltWidthMm = beltWidth;
-      if (unit === "cm") beltWidthMm = beltWidth * 10;
-      if (unit === "m") beltWidthMm = beltWidth * 1000;
-      if (unit === "in") beltWidthMm = beltWidth * 25.4;
-
-      const materialDensity = {
-        coal: 800,
-        sand: 1500,
-        gravel: 1800,
-        ore: 2500,
-        grain: 750
-      }[material] || 1000;
-
-      let pulleyDiameter = 0;
-
-      if (beltSpeed < 2.5) {
-        pulleyDiameter = beltWidthMm * 0.5;
-      } else if (beltSpeed < 5) {
-        pulleyDiameter = beltWidthMm * 0.6;
-      } else {
-        pulleyDiameter = beltWidthMm * 0.7;
-      }
-
-      const capacityFactor = 1 + (capacity / 5000);
-      pulleyDiameter *= capacityFactor;
-
-      pulleyDiameter = Math.ceil(pulleyDiameter / 50) * 50;
-
-      const pulleyThickness = beltWidthMm * 1.2;
-      const loadFactor = Math.sqrt(capacity / 100);
-      const pulleyBoreDiameter = Math.max(50, pulleyDiameter * 0.2 * loadFactor);
-      const pulleyInnerDiameter = pulleyDiameter * 0.7;
-      const grooveDepth = pulleyDiameter * 0.05;
-      const grooveWidth = pulleyDiameter * 0.1;
-      const keyWayWidth = Math.max(8, pulleyBoreDiameter * 0.25);
-      const keyWayDepth = keyWayWidth * 0.5;
-
-      const params: CalculatedParameters = {
-        pulley: {
-          diameter: pulleyDiameter,
-          thickness: pulleyThickness,
-          boreDiameter: pulleyBoreDiameter,
-          innerDiameter: pulleyInnerDiameter,
-          grooveDepth: grooveDepth,
-          grooveWidth: grooveWidth,
-          keyWayWidth: keyWayWidth,
-          keyWayDepth: keyWayDepth,
-          unit: unit
-        }
-      };
-
-      setCalculatedParams(params);
-      setActiveTab("results");
-      toast.success("Parameters calculated successfully");
+      
+      setIsLoading(true);
+      toast.loading("Generating PDF...");
+      
+      const canvas = await html2canvas(drawingRef.current, {
+        scale: 2, // Increase quality
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      
+      // Create PDF with proper dimensions
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      // Get PDF dimensions
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Calculate scaling to fit the drawing
+      const scaleFactor = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height) * 0.9;
+      const scaledWidth = canvas.width * scaleFactor;
+      const scaledHeight = canvas.height * scaleFactor;
+      
+      // Center the drawing on the PDF
+      const x = (pdfWidth - scaledWidth) / 2;
+      const y = (pdfHeight - scaledHeight) / 2;
+      
+      // Add the drawing to the PDF
+      pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
+      
+      // Add metadata
+      const { diameter, thickness, boreDiameter, unit } = parameters;
+      const date = new Date().toLocaleDateString();
+      
+      // Add footer with specifications
+      pdf.setFontSize(10);
+      pdf.text(
+        `Pulley Drawing - Ø${diameter}×${thickness} ${unit} - Bore: Ø${boreDiameter} ${unit} - Generated on ${date}`, 
+        pdfWidth / 2, 
+        pdfHeight - 10, 
+        { align: 'center' }
+      );
+      
+      // Save the PDF
+      pdf.save(`pulley_drawing_D${diameter}_T${thickness}_${unit}.pdf`);
+      toast.dismiss();
+      toast.success("PDF exported successfully");
     } catch (error) {
-      console.error("Calculation error:", error);
-      toast.error("Error calculating parameters");
+      console.error("Error exporting PDF:", error);
+      toast.dismiss();
+      toast.error("Error exporting PDF file. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -164,7 +375,7 @@ const PulleyDesign = () => {
       }
     }
   };
-
+  
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -188,302 +399,245 @@ const PulleyDesign = () => {
       <div className="max-w-6xl mx-auto">
         <motion.div variants={itemVariants} className="text-center mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
-            Pulley Design
+            Pulley Design Generator
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Enter basic parameters to generate technical drawings for pulley
+            Create precise technical drawings for pulleys with custom dimensions.
           </p>
         </motion.div>
         
-        <Tabs 
-          value={activeTab} 
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
-            <TabsTrigger value="input">Input Parameters</TabsTrigger>
-            <TabsTrigger value="results" disabled={!calculatedParams}>Generated Drawing</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="input">
-            <motion.div variants={itemVariants}>
-              <Card>
-                <CardHeader>
-                  <CardTitle>System Parameters</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="beltWidth" className="control-label">
-                        Belt Width
-                      </Label>
-                      <Input
-                        id="beltWidth"
-                        name="beltWidth"
-                        type="number"
-                        value={inputParams.beltWidth}
-                        onChange={handleInputChange}
-                        min={1}
-                        className="h-9"
-                      />
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <Label htmlFor="beltSpeed" className="control-label">
-                        Belt Speed (m/s)
-                      </Label>
-                      <Input
-                        id="beltSpeed"
-                        name="beltSpeed"
-                        type="number"
-                        value={inputParams.beltSpeed}
-                        onChange={handleInputChange}
-                        min={0.1}
-                        step={0.1}
-                        className="h-9"
-                      />
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <Label htmlFor="capacity" className="control-label">
-                        Capacity (t/h)
-                      </Label>
-                      <Input
-                        id="capacity"
-                        name="capacity"
-                        type="number"
-                        value={inputParams.capacity}
-                        onChange={handleInputChange}
-                        min={1}
-                        className="h-9"
-                      />
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <Label htmlFor="material" className="control-label">
-                        Material Type
-                      </Label>
-                      <select
-                        id="material"
-                        name="material"
-                        value={inputParams.material}
-                        onChange={(e) => setInputParams(prev => ({...prev, material: e.target.value}))}
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
-                      >
-                        <option value="coal">Coal</option>
-                        <option value="sand">Sand</option>
-                        <option value="gravel">Gravel</option>
-                        <option value="ore">Ore</option>
-                        <option value="grain">Grain</option>
-                      </select>
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <Label htmlFor="inclination" className="control-label">
-                        Inclination (degrees)
-                      </Label>
-                      <Input
-                        id="inclination"
-                        name="inclination"
-                        type="number"
-                        value={inputParams.inclination}
-                        onChange={handleInputChange}
-                        min={0}
-                        max={30}
-                        className="h-9"
-                      />
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <Label className="control-label">Unit</Label>
-                      <div className="flex border rounded-md overflow-hidden">
-                        {(['mm', 'cm', 'm', 'in'] as const).map((unit) => (
-                          <button
-                            key={unit}
-                            className={cn(
-                              "px-3 py-1.5 text-sm transition-colors",
-                              inputParams.unit === unit
-                                ? "bg-primary text-primary-foreground"
-                                : "hover:bg-muted"
-                            )}
-                            onClick={() => handleUnitChange(unit)}
-                          >
-                            {unit}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+        <motion.div variants={itemVariants}>
+          <div className="control-panel animate-slide-in">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="diameter" className="control-label">
+                  Diameter
+                </Label>
+                <Input
+                  id="diameter"
+                  name="diameter"
+                  type="number"
+                  value={parameters.diameter}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="thickness" className="control-label">
+                  Thickness
+                </Label>
+                <Input
+                  id="thickness"
+                  name="thickness"
+                  type="number"
+                  value={parameters.thickness}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="boreDiameter" className="control-label">
+                  Bore Diameter
+                </Label>
+                <Input
+                  id="boreDiameter"
+                  name="boreDiameter"
+                  type="number"
+                  value={parameters.boreDiameter}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="grooveDepth" className="control-label">
+                  Groove Depth
+                </Label>
+                <Input
+                  id="grooveDepth"
+                  name="grooveDepth"
+                  type="number"
+                  value={parameters.grooveDepth}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="grooveWidth" className="control-label">
+                  Groove Width
+                </Label>
+                <Input
+                  id="grooveWidth"
+                  name="grooveWidth"
+                  type="number"
+                  value={parameters.grooveWidth}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="keyWayWidth" className="control-label">
+                  Keyway Width
+                </Label>
+                <Input
+                  id="keyWayWidth"
+                  name="keyWayWidth"
+                  type="number"
+                  value={parameters.keyWayWidth}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="keyWayDepth" className="control-label">
+                  Keyway Depth
+                </Label>
+                <Input
+                  id="keyWayDepth"
+                  name="keyWayDepth"
+                  type="number"
+                  value={parameters.keyWayDepth}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1.5 w-full sm:w-auto">
+                <Label className="control-label">Unit</Label>
+                <div className="flex border rounded-md overflow-hidden">
+                  {(['mm', 'cm', 'm', 'in'] as const).map((unit) => (
+                    <button
+                      key={unit}
+                      className={cn(
+                        "px-3 py-1.5 text-sm transition-colors",
+                        parameters.unit === unit
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      )}
+                      onClick={() => handleUnitChange(unit)}
+                    >
+                      {unit}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button onClick={handleGenerateDrawing} className="flex-1 sm:flex-none">
+                  Generate
+                </Button>
+                <Button variant="outline" onClick={handleExportPDF} className="flex-1 sm:flex-none">
+                  PDF
+                </Button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        
+        <motion.div variants={itemVariants} className="mt-8">
+          <div 
+            ref={drawingRef}
+            className="bg-white rounded-lg shadow-soft border border-border overflow-hidden p-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Top View */}
+              <div className="relative">
+                <PulleyDrawingArea 
+                  parameters={parameters}
+                  view="top"
+                  className="w-full transition-all duration-500 ease-out-expo"
+                />
+                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
+                  <div className="text-xs font-medium text-muted-foreground">TOP VIEW</div>
+                  <div className="text-sm font-medium mt-1">
+                    Ø{parameters.diameter} {parameters.unit}
                   </div>
-                  
-                  <div className="flex flex-col space-y-4">
-                    <div className="text-sm text-muted-foreground italic">
-                      Note: Enter all the required parameters above and click the button below to calculate dimensions
-                      and generate detailed drawings.
-                    </div>
-                    <div className="flex justify-end">
-                      <Button onClick={calculateParameters}>
-                        Calculate & Generate Drawing
-                      </Button>
-                    </div>
+                </div>
+              </div>
+              
+              {/* Side View */}
+              <div className="relative">
+                <PulleyDrawingArea 
+                  parameters={parameters}
+                  view="side"
+                  className="w-full transition-all duration-500 ease-out-expo"
+                />
+                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
+                  <div className="text-xs font-medium text-muted-foreground">SIDE VIEW</div>
+                  <div className="text-sm font-medium mt-1">
+                    T: {parameters.thickness} {parameters.unit}
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </TabsContent>
-          
-          <TabsContent value="results">
-            {calculatedParams && (
-              <motion.div 
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="space-y-8"
-              >
-                <motion.div variants={itemVariants} className="bg-card border rounded-lg shadow overflow-hidden">
-                  <div className="p-4 bg-muted/30 border-b">
-                    <h2 className="text-xl font-semibold">Calculated Parameters</h2>
+                </div>
+              </div>
+            </div>
+            
+            {/* Common title block below both views */}
+            <div className="mt-6 bg-white/90 backdrop-blur-sm border border-border rounded-md p-4 shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">PULLEY DRAWING</div>
+                  <div className="text-sm font-medium mt-1">
+                    Ø{parameters.diameter} × {parameters.thickness} {parameters.unit}
                   </div>
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Input Parameters</h3>
-                        <div className="space-y-2">
-                          <div>
-                            <span className="text-sm text-muted-foreground">Belt Width:</span>
-                            <span className="ml-2 font-medium">{formatWithUnit(inputParams.beltWidth, inputParams.unit)}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">Belt Speed:</span>
-                            <span className="ml-2 font-medium">{inputParams.beltSpeed} m/s</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">Capacity:</span>
-                            <span className="ml-2 font-medium">{inputParams.capacity} t/h</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">Material:</span>
-                            <span className="ml-2 font-medium">{inputParams.material}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Calculated Dimensions</h3>
-                        <div className="space-y-2">
-                          <div>
-                            <span className="text-sm text-muted-foreground">Main Diameter:</span>
-                            <span className="ml-2 font-medium">{formatWithUnit(calculatedParams.pulley.diameter, calculatedParams.pulley.unit)}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">Face Width:</span>
-                            <span className="ml-2 font-medium">{formatWithUnit(calculatedParams.pulley.thickness, calculatedParams.pulley.unit)}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">Bore Diameter:</span>
-                            <span className="ml-2 font-medium">{formatWithUnit(calculatedParams.pulley.boreDiameter, calculatedParams.pulley.unit)}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">Inner Diameter (V-groove):</span>
-                            <span className="ml-2 font-medium">{formatWithUnit(calculatedParams.pulley.innerDiameter, calculatedParams.pulley.unit)}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">Groove Depth:</span>
-                            <span className="ml-2 font-medium">{formatWithUnit(calculatedParams.pulley.grooveDepth, calculatedParams.pulley.unit)}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">Groove Width:</span>
-                            <span className="ml-2 font-medium">{formatWithUnit(calculatedParams.pulley.grooveWidth, calculatedParams.pulley.unit)}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">Keyway (Width × Depth):</span>
-                            <span className="ml-2 font-medium">
-                              {formatWithUnit(calculatedParams.pulley.keyWayWidth, calculatedParams.pulley.unit)} × {formatWithUnit(calculatedParams.pulley.keyWayDepth, calculatedParams.pulley.unit)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-6 pt-6 border-t">
-                      <h3 className="text-lg font-medium mb-3">Calculation Details</h3>
-                      <div className="text-sm text-muted-foreground space-y-2">
-                        <p>• Main Diameter = Belt Width × (50-70% based on speed) × Capacity Factor</p>
-                        <p>• Face Width = Belt Width × 1.2 (20% wider for tracking)</p>
-                        <p>• Bore Diameter = max(50mm, Main Diameter × 0.2 × Load Factor)</p>
-                        <p>• Inner Diameter = Main Diameter × 0.7 (V-groove taper)</p>
-                        <p>• Groove Depth = Main Diameter × 0.05 (5% of diameter)</p>
-                        <p>• Groove Width = Main Diameter × 0.1 (10% of diameter)</p>
-                        <p>• Keyway Width = max(8mm, Bore Diameter × 0.25)</p>
-                        <p>• Keyway Depth = Keyway Width × 0.5</p>
-                      </div>
-                    </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">BORE DIAMETER</div>
+                  <div className="text-sm font-medium mt-1">
+                    Ø{parameters.boreDiameter} {parameters.unit}
                   </div>
-                </motion.div>
-                
-                <motion.div variants={itemVariants} className="bg-card border rounded-lg shadow overflow-hidden">
-                  <div className="p-4 bg-muted/30 border-b flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Pulley Drawing</h2>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">V-GROOVE</div>
+                  <div className="text-sm font-medium mt-1">
+                    D: {parameters.grooveDepth} × W: {parameters.grooveWidth} {parameters.unit}
                   </div>
-                  
-                  <div ref={pulleyRef} className="bg-white p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="relative">
-                        <PulleyDrawingArea 
-                          parameters={calculatedParams.pulley}
-                          view="side"
-                          className="w-full"
-                        />
-                        <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
-                          <div className="text-xs font-medium text-muted-foreground">FRONT VIEW</div>
-                        </div>
-                      </div>
-                      
-                      <div className="relative">
-                        <PulleyDrawingArea 
-                          parameters={calculatedParams.pulley}
-                          view="side"
-                          className="w-full"
-                        />
-                        <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
-                          <div className="text-xs font-medium text-muted-foreground">SIDE VIEW</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-6 bg-white/90 backdrop-blur-sm border border-border rounded-md p-4 shadow-sm">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                          <div className="text-xs font-medium text-muted-foreground">PULLEY DIAMETER</div>
-                          <div className="text-sm font-medium mt-1">
-                            Ø{calculatedParams.pulley.diameter} {calculatedParams.pulley.unit}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs font-medium text-muted-foreground">THICKNESS</div>
-                          <div className="text-sm font-medium mt-1">
-                            {calculatedParams.pulley.thickness} {calculatedParams.pulley.unit}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs font-medium text-muted-foreground">BORE DIAMETER</div>
-                          <div className="text-sm font-medium mt-1">
-                            Ø{calculatedParams.pulley.boreDiameter} {calculatedParams.pulley.unit}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs font-medium text-muted-foreground">INNER DIAMETER</div>
-                          <div className="text-sm font-medium mt-1">
-                            Ø{calculatedParams.pulley.innerDiameter} {calculatedParams.pulley.unit}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">KEYWAY</div>
+                  <div className="text-sm font-medium mt-1">
+                    W: {parameters.keyWayWidth} × D: {parameters.keyWayDepth} {parameters.unit}
                   </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </TabsContent>
-        </Tabs>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">DATE</div>
+                  <div className="text-sm font-medium mt-1">
+                    {new Date().toLocaleDateString()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">SCALE</div>
+                  <div className="text-sm font-medium mt-1">
+                    1:1
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-4 shadow-lg flex items-center space-x-4">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <div className="text-sm font-medium">Processing...</div>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );

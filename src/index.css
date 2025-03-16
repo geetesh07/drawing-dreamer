@@ -1,0 +1,217 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --primary: 221.2 83% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 217.2 91.2% 59.8%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83% 53.3%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html,
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  }
+  
+  body {
+    @apply font-sans overflow-x-hidden;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+  
+  h1 {
+    @apply text-4xl;
+  }
+  
+  h2 {
+    @apply text-3xl;
+  }
+  
+  h3 {
+    @apply text-2xl;
+  }
+  
+  h4 {
+    @apply text-xl;
+  }
+  
+  h5 {
+    @apply text-lg;
+  }
+  
+  h6 {
+    @apply text-base;
+  }
+}
+
+@layer components {
+  .control-label {
+    @apply text-xs font-medium text-muted-foreground mb-1.5;
+  }
+  
+  .drawing-container {
+    @apply border border-border rounded-lg shadow-soft dark:bg-background/30 bg-white overflow-hidden transition-all;
+  }
+  
+  .control-panel {
+    @apply bg-white/80 dark:bg-background/30 backdrop-blur-sm rounded-lg border border-border p-5 shadow-soft;
+  }
+  
+  .view-btn {
+    @apply relative px-3 py-2 rounded-md text-sm font-medium transition-all duration-300 ease-out-expo;
+  }
+  
+  .view-btn::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-[2px] rounded-full transform scale-x-0 transition-transform duration-300 bg-primary;
+  }
+  
+  .view-btn:hover::after {
+    @apply scale-x-100;
+  }
+  
+  .view-btn.active {
+    @apply text-primary font-medium;
+  }
+  
+  .view-btn.active::after {
+    @apply scale-x-100;
+  }
+}
+
+/* Glass effect */
+.glass-panel {
+  @apply bg-white/70 dark:bg-black/20 backdrop-blur-sm border border-white/20 dark:border-white/10 shadow-soft;
+}
+
+.glass-panel-dark {
+  @apply bg-black/10 backdrop-blur-sm border border-black/5 shadow-soft;
+}
+
+/* Drawing canvas */
+.drawing-grid {
+  background-size: 20px 20px;
+  background-image: 
+    linear-gradient(to right, rgba(240, 240, 240, 0.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(240, 240, 240, 0.3) 1px, transparent 1px);
+}
+
+.dark .drawing-grid {
+  background-image: 
+    linear-gradient(to right, rgba(50, 50, 50, 0.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(50, 50, 50, 0.3) 1px, transparent 1px);
+}
+
+/* Transitions for view changes */
+.view-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.view-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.view-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.view-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Additional theme transitions */
+.theme-transition {
+  @apply transition-colors duration-300;
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+}
+
+/* Updated control panel styling */
+.modern-input {
+  @apply bg-white/50 dark:bg-black/20 border border-border rounded-md px-3 py-2 
+  focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50
+  placeholder:text-muted-foreground;
+}
+
+/* Hero section styling */
+.hero-gradient {
+  @apply bg-gradient-to-br from-primary/10 via-background to-background dark:from-primary/20 dark:via-background dark:to-background;
+}

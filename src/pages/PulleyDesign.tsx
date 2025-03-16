@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import * as makerjs from 'makerjs';
 
 // Define the pulley parameters type
 interface PulleyParameters {
   diameter: number;
   thickness: number;
   boreDiameter: number;
+  innerDiameter: number; // V-groove diameter
   grooveDepth: number;
   grooveWidth: number;
   keyWayWidth: number;
@@ -24,7 +26,8 @@ interface PulleyParameters {
 const DEFAULT_PARAMETERS: PulleyParameters = {
   diameter: 100,
   thickness: 20,
-  boreDiameter: 25,
+  boreDiameter: 25, 
+  innerDiameter: 70, 
   grooveDepth: 5,
   grooveWidth: 10,
   keyWayWidth: 6,
@@ -32,216 +35,186 @@ const DEFAULT_PARAMETERS: PulleyParameters = {
   unit: "mm",
 };
 
-// PulleyDrawingArea component
-const PulleyDrawingArea: React.FC<{
+// Create a component for displaying Maker.js models
+const MakerJsDrawing: React.FC<{
   parameters: PulleyParameters;
   view: "top" | "side";
   className?: string;
 }> = ({ parameters, view, className }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const svgContainerRef = useRef<HTMLDivElement>(null);
   
-  React.useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Set canvas dimensions
-    const canvasSize = 400;
-    canvas.width = canvasSize;
-    canvas.height = canvasSize;
-    
-    // Calculate scale to fit drawing in canvas
-    const maxDimension = Math.max(parameters.diameter, parameters.thickness) * 1.5;
-    const scale = (canvasSize * 0.8) / maxDimension;
-    
-    // Center point of canvas
-    const centerX = canvasSize / 2;
-    const centerY = canvasSize / 2;
-    
-    // Draw based on view
-    if (view === "top") {
-      drawTopView(ctx, centerX, centerY, scale);
-    } else {
-      drawSideView(ctx, centerX, centerY, scale);
+  useEffect(() => {
+    if (svgContainerRef.current) {
+      // Clear any previous content
+      svgContainerRef.current.innerHTML = '';
+      
+      try {
+        // Create the model based on view type
+        const model = view === "top" 
+          ? createTopViewModel(parameters) 
+          : createSideViewModel(parameters);
+        
+        // Convert to SVG
+        const svgOptions = {
+          svgAttrs: { 
+            width: '100%', 
+            height: '100%',
+            class: 'pulley-drawing',
+            viewBox: '-110 -110 220 220' // Center the drawing and allow space for dimensions
+          },
+          fontSize: 10,
+          useSvgPathOnly: false
+        };
+        
+        const svgString = makerjs.exporter.toSVG(model, svgOptions);
+        
+        // Insert SVG into the container
+        svgContainerRef.current.innerHTML = svgString;
+      } catch (error) {
+        console.error("Error rendering MakerJS drawing:", error);
+        // Fallback to a simple message if drawing fails
+        svgContainerRef.current.innerHTML = `<div style="display: flex; height: 100%; align-items: center; justify-content: center; color: #666;">
+          <p>Drawing engine error: ${(error as Error).message || "Unknown error"}</p>
+        </div>`;
+      }
     }
   }, [parameters, view]);
   
-  // Draw top view
-  const drawTopView = (
-    ctx: CanvasRenderingContext2D,
-    centerX: number,
-    centerY: number,
-    scale: number
-  ) => {
-    const { diameter, boreDiameter, keyWayWidth, keyWayDepth } = parameters;
+  // Create a top view model
+  function createTopViewModel(params: PulleyParameters) {
+    // Create a new model
+    const model: makerjs.IModel = { 
+      models: {}, 
+      paths: {} 
+    };
     
-    // Draw outer circle
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, (diameter / 2) * scale, 0, Math.PI * 2);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    const outerRadius = params.diameter / 2;
+    const innerRadius = params.innerDiameter / 2;
+    const boreRadius = params.boreDiameter / 2;
     
-    // Draw bore circle
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, (boreDiameter / 2) * scale, 0, Math.PI * 2);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Create circles for outer diameter
+    model.paths['outerCircle'] = new makerjs.paths.Circle([0, 0], outerRadius);
+    model.paths['innerCircle'] = new makerjs.paths.Circle([0, 0], innerRadius);
+    model.paths['boreCircle'] = new makerjs.paths.Circle([0, 0], boreRadius);
     
-    // Draw keyway
-    const keyWayPositionX = centerX - (keyWayWidth / 2) * scale;
-    const keyWayPositionY = centerY - (boreDiameter / 2) * scale;
-    const keyWayHeight = (boreDiameter / 2 + keyWayDepth) * scale;
+    // Add keyway - using models.Rectangle instead of paths.Rectangle
+    const keyWayHalfWidth = params.keyWayWidth / 2;
+    const keyWayDepth = params.keyWayDepth;
     
-    ctx.beginPath();
-    ctx.rect(keyWayPositionX, centerY - keyWayHeight, keyWayWidth * scale, keyWayHeight);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Create a rectangle model for the keyway
+    model.models['keyway'] = new makerjs.models.Rectangle(
+      params.keyWayWidth,
+      params.keyWayDepth
+    );
     
-    // Draw dimension lines
-    drawDimensionLines(ctx, centerX, centerY, scale, "top");
-  };
+    // Position the keyway correctly
+    makerjs.model.move(model.models['keyway'], 
+      [-keyWayHalfWidth, -boreRadius - params.keyWayDepth]
+    );
+    
+    return model;
+  }
   
-  // Draw side view
-  const drawSideView = (
-    ctx: CanvasRenderingContext2D,
-    centerX: number,
-    centerY: number,
-    scale: number
-  ) => {
-    const { diameter, thickness, boreDiameter, grooveDepth, grooveWidth } = parameters;
+  // Create a side view model
+  function createSideViewModel(params: PulleyParameters) {
+    // Create a new model
+    const model: makerjs.IModel = { 
+      models: {}, 
+      paths: {} 
+    };
     
-    // Calculate dimensions
-    const pulleyRadius = (diameter / 2) * scale;
-    const pulleyThickness = thickness * scale;
-    const boreRadius = (boreDiameter / 2) * scale;
-    const grooveDepthScaled = grooveDepth * scale;
-    const grooveWidthScaled = grooveWidth * scale;
+    const outerRadius = params.diameter / 2;
+    const innerRadius = params.innerDiameter / 2;
+    const boreRadius = params.boreDiameter / 2;
+    const halfThickness = params.thickness / 2;
+    const grooveWidth = params.grooveWidth;
+    const grooveHalfWidth = grooveWidth / 2;
     
-    // Calculate positions
-    const topY = centerY - pulleyThickness / 2;
-    const bottomY = centerY + pulleyThickness / 2;
-    const leftX = centerX - pulleyRadius;
-    const rightX = centerX + pulleyRadius;
+    // Main outline (rectangle)
+    model.models['outline'] = new makerjs.models.Rectangle(
+      params.thickness,
+      params.diameter
+    );
     
-    // Draw main body (outer rectangle)
-    ctx.beginPath();
-    ctx.rect(leftX, topY, pulleyRadius * 2, pulleyThickness);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Center the outline rectangle
+    makerjs.model.move(model.models['outline'], 
+      [-halfThickness, -outerRadius]
+    );
     
-    // Draw bore (inner rectangle)
-    ctx.beginPath();
-    ctx.rect(centerX - boreRadius, topY, boreRadius * 2, pulleyThickness);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Inner diameter line (top)
+    model.paths['innerTop'] = new makerjs.paths.Line(
+      [-halfThickness, -innerRadius],
+      [halfThickness, -innerRadius]
+    );
     
-    // Draw V-groove
-    const grooveTop = centerY - grooveWidthScaled / 2;
-    const grooveBottom = centerY + grooveWidthScaled / 2;
+    // Inner diameter line (bottom)
+    model.paths['innerBottom'] = new makerjs.paths.Line(
+      [-halfThickness, innerRadius],
+      [halfThickness, innerRadius]
+    );
     
-    // Left side of V-groove
-    ctx.beginPath();
-    ctx.moveTo(leftX, grooveTop);
-    ctx.lineTo(leftX - grooveDepthScaled, centerY);
-    ctx.lineTo(leftX, grooveBottom);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Bore diameter line (top)
+    model.paths['boreTop'] = new makerjs.paths.Line(
+      [-halfThickness, -boreRadius],
+      [halfThickness, -boreRadius]
+    );
     
-    // Right side of V-groove
-    ctx.beginPath();
-    ctx.moveTo(rightX, grooveTop);
-    ctx.lineTo(rightX + grooveDepthScaled, centerY);
-    ctx.lineTo(rightX, grooveBottom);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Bore diameter line (bottom)
+    model.paths['boreBottom'] = new makerjs.paths.Line(
+      [-halfThickness, boreRadius],
+      [halfThickness, boreRadius]
+    );
     
-    // Draw keyway (visible in side view as a small rectangle)
-    const keyWayWidth = parameters.keyWayWidth * scale;
-    const keyWayDepth = parameters.keyWayDepth * scale;
+    // V-groove (top)
+    model.paths['vGrooveTop1'] = new makerjs.paths.Line(
+      [-grooveHalfWidth, -outerRadius],
+      [0, -innerRadius]
+    );
     
-    ctx.beginPath();
-    ctx.rect(centerX - boreRadius - keyWayDepth, centerY - keyWayWidth / 2, keyWayDepth, keyWayWidth);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    model.paths['vGrooveTop2'] = new makerjs.paths.Line(
+      [0, -innerRadius],
+      [grooveHalfWidth, -outerRadius]
+    );
     
-    // Draw dimension lines
-    drawDimensionLines(ctx, centerX, centerY, scale, "side");
-  };
+    // V-groove (bottom)
+    model.paths['vGrooveBottom1'] = new makerjs.paths.Line(
+      [-grooveHalfWidth, outerRadius],
+      [0, innerRadius]
+    );
+    
+    model.paths['vGrooveBottom2'] = new makerjs.paths.Line(
+      [0, innerRadius],
+      [grooveHalfWidth, outerRadius]
+    );
+    
+    // Keyway
+    const keyWayHalfWidth = params.keyWayWidth / 2;
+    const keyWayDepth = params.keyWayDepth;
+    
+    // Create a rectangle model for the keyway
+    model.models['keyway'] = new makerjs.models.Rectangle(
+      params.keyWayWidth, 
+      params.keyWayDepth
+    );
+    
+    // Position the keyway correctly
+    makerjs.model.move(model.models['keyway'], 
+      [-keyWayHalfWidth, -boreRadius - params.keyWayDepth]
+    );
+    
+    return model;
+  }
   
-  // Draw dimension lines
-  const drawDimensionLines = (
-    ctx: CanvasRenderingContext2D,
-    centerX: number,
-    centerY: number,
-    scale: number,
-    view: "top" | "side"
-  ) => {
-    const { diameter, thickness, boreDiameter } = parameters;
-    
-    ctx.setLineDash([5, 5]);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "#666";
-    ctx.fillStyle = "#666";
-    ctx.font = "12px Arial";
-    
-    if (view === "top") {
-      // Draw diameter dimension line
-      ctx.beginPath();
-      ctx.moveTo(centerX - (diameter / 2) * scale, centerY + (diameter / 2) * scale + 20);
-      ctx.lineTo(centerX + (diameter / 2) * scale, centerY + (diameter / 2) * scale + 20);
-      ctx.stroke();
-      
-      // Draw diameter text
-      ctx.fillText(`Ø${diameter}${parameters.unit}`, centerX, centerY + (diameter / 2) * scale + 40);
-      
-      // Draw bore diameter dimension line
-      ctx.beginPath();
-      ctx.moveTo(centerX - (boreDiameter / 2) * scale, centerY - (boreDiameter / 2) * scale - 20);
-      ctx.lineTo(centerX + (boreDiameter / 2) * scale, centerY - (boreDiameter / 2) * scale - 20);
-      ctx.stroke();
-      
-      // Draw bore diameter text
-      ctx.fillText(`Ø${boreDiameter}${parameters.unit}`, centerX, centerY - (boreDiameter / 2) * scale - 30);
-    } else {
-      // Draw thickness dimension line
-      ctx.beginPath();
-      ctx.moveTo(centerX - (diameter / 2) * scale - 20, centerY - (thickness / 2) * scale);
-      ctx.lineTo(centerX - (diameter / 2) * scale - 20, centerY + (thickness / 2) * scale);
-      ctx.stroke();
-      
-      // Draw thickness text
-      ctx.fillText(`${thickness}${parameters.unit}`, centerX - (diameter / 2) * scale - 40, centerY);
-      
-      // Draw groove depth dimension line
-      ctx.beginPath();
-      ctx.moveTo(centerX + (diameter / 2) * scale + 20, centerY);
-      ctx.lineTo(centerX + (diameter / 2) * scale + 20 + parameters.grooveDepth * scale, centerY);
-      ctx.stroke();
-      
-      // Draw groove depth text
-      ctx.fillText(`${parameters.grooveDepth}${parameters.unit}`, centerX + (diameter / 2) * scale + 30, centerY - 10);
-    }
-    
-    ctx.setLineDash([]);
-  };
-  
-  return <canvas ref={canvasRef} className={className} />;
+  return (
+    <div 
+      ref={svgContainerRef} 
+      className={`w-full h-96 ${className}`}
+      style={{ minHeight: "400px", border: "1px solid #eee", backgroundColor: "#fff" }}
+    />
+  );
 };
 
-const PulleyDesign = () => {
+const PulleyDesign: React.FC = () => {
   const [parameters, setParameters] = useState<PulleyParameters>(DEFAULT_PARAMETERS);
   const [isLoading, setIsLoading] = useState(false);
   const drawingRef = useRef<HTMLDivElement>(null);
@@ -251,8 +224,18 @@ const PulleyDesign = () => {
     const { name, value } = e.target;
     const numValue = parseFloat(value);
     
-    if (name === "boreDiameter" && numValue >= parameters.diameter) {
-      toast.error("Bore diameter must be smaller than the pulley diameter");
+    if (name === "boreDiameter" && numValue >= parameters.innerDiameter) {
+      toast.error("Bore diameter must be smaller than the inner diameter");
+      return;
+    }
+    
+    if (name === "innerDiameter" && numValue >= parameters.diameter) {
+      toast.error("Inner diameter must be smaller than the pulley diameter");
+      return;
+    }
+    
+    if (name === "innerDiameter" && numValue <= parameters.boreDiameter) {
+      toast.error("Inner diameter must be larger than the bore diameter");
       return;
     }
     
@@ -270,7 +253,7 @@ const PulleyDesign = () => {
     }));
   };
 
-  // Generate drawing (update parameters)
+  // Generate drawing
   const handleGenerateDrawing = () => {
     // Validate parameters
     if (parameters.diameter <= 0 || parameters.thickness <= 0 || parameters.boreDiameter <= 0) {
@@ -278,8 +261,13 @@ const PulleyDesign = () => {
       return;
     }
     
-    if (parameters.boreDiameter >= parameters.diameter) {
-      toast.error("Bore diameter must be smaller than the pulley diameter");
+    if (parameters.boreDiameter >= parameters.innerDiameter) {
+      toast.error("Bore diameter must be smaller than the inner diameter");
+      return;
+    }
+    
+    if (parameters.innerDiameter >= parameters.diameter) {
+      toast.error("Inner diameter must be smaller than the pulley diameter");
       return;
     }
     
@@ -339,13 +327,13 @@ const PulleyDesign = () => {
       pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
       
       // Add metadata
-      const { diameter, thickness, boreDiameter, unit } = parameters;
+      const { diameter, thickness, boreDiameter, innerDiameter, unit } = parameters;
       const date = new Date().toLocaleDateString();
       
       // Add footer with specifications
       pdf.setFontSize(10);
       pdf.text(
-        `Pulley Drawing - Ø${diameter}×${thickness} ${unit} - Bore: Ø${boreDiameter} ${unit} - Generated on ${date}`, 
+        `Pulley Drawing - Ø${diameter}×${thickness} ${unit} - Bore: Ø${boreDiameter} ${unit} - Inner: Ø${innerDiameter} ${unit} - Generated on ${date}`, 
         pdfWidth / 2, 
         pdfHeight - 10, 
         { align: 'center' }
@@ -364,6 +352,151 @@ const PulleyDesign = () => {
     }
   };
 
+  // Export as DXF
+  const handleExportDXF = () => {
+    try {
+      // Create models for both views
+      const topViewModel = createTopViewModel(parameters);
+      const sideViewModel = createSideViewModel(parameters);
+      
+      // Combine models
+      const combinedModel: makerjs.IModel = { models: {} };
+      combinedModel.models = {
+        topView: topViewModel,
+        sideView: makerjs.model.move(sideViewModel, [parameters.diameter * 1.5, 0])
+      };
+      
+      // Generate DXF content
+      const dxfContent = makerjs.exporter.toDXF(combinedModel);
+      
+      // Create blob and download
+      const blob = new Blob([dxfContent], { type: 'application/dxf' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `pulley_drawing_D${parameters.diameter}_T${parameters.thickness}_${parameters.unit}.dxf`;
+      
+      link.click();
+      toast.success("DXF file exported successfully");
+    } catch (error) {
+      console.error("Error exporting DXF:", error);
+      toast.error("Error exporting DXF file. Please try again.");
+    }
+  };
+  
+  // Create a clean top view model for export
+  function createTopViewModel(params: PulleyParameters) {
+    // Create a new model
+    const model: makerjs.IModel = { models: {}, paths: {} };
+    
+    const outerRadius = params.diameter / 2;
+    const innerRadius = params.innerDiameter / 2;
+    const boreRadius = params.boreDiameter / 2;
+    
+    // Create circles for outer diameter, inner diameter, and bore
+    model.paths['outerCircle'] = new makerjs.paths.Circle([0, 0], outerRadius);
+    model.paths['innerCircle'] = new makerjs.paths.Circle([0, 0], innerRadius);
+    model.paths['boreCircle'] = new makerjs.paths.Circle([0, 0], boreRadius);
+    
+    // Add keyway using models.Rectangle
+    const keyWayHalfWidth = params.keyWayWidth / 2;
+    
+    model.models['keyway'] = new makerjs.models.Rectangle(
+      params.keyWayWidth,
+      params.keyWayDepth
+    );
+    
+    // Position the keyway
+    makerjs.model.move(model.models['keyway'], 
+      [-keyWayHalfWidth, -boreRadius - params.keyWayDepth]
+    );
+    
+    return model;
+  }
+  
+  // Create a clean side view model for export
+  function createSideViewModel(params: PulleyParameters) {
+    // Create a new model
+    const model: makerjs.IModel = { models: {}, paths: {} };
+    
+    const outerRadius = params.diameter / 2;
+    const innerRadius = params.innerDiameter / 2;
+    const boreRadius = params.boreDiameter / 2;
+    const halfThickness = params.thickness / 2;
+    const grooveWidth = params.grooveWidth;
+    const grooveHalfWidth = grooveWidth / 2;
+    
+    // Main outline using models.Rectangle
+    model.models['outline'] = new makerjs.models.Rectangle(
+      params.thickness,
+      params.diameter
+    );
+    
+    // Center the rectangle
+    makerjs.model.move(model.models['outline'], 
+      [-halfThickness, -outerRadius]
+    );
+    
+    // Inner diameter lines
+    model.paths['innerTop'] = new makerjs.paths.Line(
+      [-halfThickness, -innerRadius],
+      [halfThickness, -innerRadius]
+    );
+    
+    model.paths['innerBottom'] = new makerjs.paths.Line(
+      [-halfThickness, innerRadius],
+      [halfThickness, innerRadius]
+    );
+    
+    // Bore diameter lines
+    model.paths['boreTop'] = new makerjs.paths.Line(
+      [-halfThickness, -boreRadius],
+      [halfThickness, -boreRadius]
+    );
+    
+    model.paths['boreBottom'] = new makerjs.paths.Line(
+      [-halfThickness, boreRadius],
+      [halfThickness, boreRadius]
+    );
+    
+    // V-groove (top)
+    model.paths['vGrooveTop1'] = new makerjs.paths.Line(
+      [-grooveHalfWidth, -outerRadius],
+      [0, -innerRadius]
+    );
+    
+    model.paths['vGrooveTop2'] = new makerjs.paths.Line(
+      [0, -innerRadius],
+      [grooveHalfWidth, -outerRadius]
+    );
+    
+    // V-groove (bottom)
+    model.paths['vGrooveBottom1'] = new makerjs.paths.Line(
+      [-grooveHalfWidth, outerRadius],
+      [0, innerRadius]
+    );
+    
+    model.paths['vGrooveBottom2'] = new makerjs.paths.Line(
+      [0, innerRadius],
+      [grooveHalfWidth, outerRadius]
+    );
+    
+    // Keyway
+    const keyWayHalfWidth = params.keyWayWidth / 2;
+    
+    // Create a rectangle model for the keyway
+    model.models['keyway'] = new makerjs.models.Rectangle(
+      params.keyWayWidth, 
+      params.keyWayDepth
+    );
+    
+    // Position the keyway correctly
+    makerjs.model.move(model.models['keyway'], 
+      [-keyWayHalfWidth, -boreRadius - params.keyWayDepth]
+    );
+    
+    return model;
+  }
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -375,7 +508,7 @@ const PulleyDesign = () => {
       }
     }
   };
-  
+
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -441,13 +574,28 @@ const PulleyDesign = () => {
               
               <div className="space-y-1.5">
                 <Label htmlFor="boreDiameter" className="control-label">
-                  Bore Diameter
+                  Bore Diameter (Shaft)
                 </Label>
                 <Input
                   id="boreDiameter"
                   name="boreDiameter"
                   type="number"
                   value={parameters.boreDiameter}
+                  onChange={handleInputChange}
+                  min={1}
+                  className="h-9"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="innerDiameter" className="control-label">
+                  Inner Diameter (V-Taper)
+                </Label>
+                <Input
+                  id="innerDiameter"
+                  name="innerDiameter"
+                  type="number"
+                  value={parameters.innerDiameter}
                   onChange={handleInputChange}
                   min={1}
                   className="h-9"
@@ -543,6 +691,9 @@ const PulleyDesign = () => {
                 <Button variant="outline" onClick={handleExportPDF} className="flex-1 sm:flex-none">
                   PDF
                 </Button>
+                <Button variant="outline" onClick={handleExportDXF} className="flex-1 sm:flex-none">
+                  DXF
+                </Button>
               </div>
             </div>
           </div>
@@ -551,37 +702,31 @@ const PulleyDesign = () => {
         <motion.div variants={itemVariants} className="mt-8">
           <div 
             ref={drawingRef}
-            className="bg-white rounded-lg shadow-soft border border-border overflow-hidden p-4"
+            className="bg-white rounded-lg shadow-soft border border-border overflow-hidden p-8"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Top View */}
               <div className="relative">
-                <PulleyDrawingArea 
+                <div className="bg-white p-2 rounded-md absolute top-2 left-2 border border-border text-sm font-medium z-10">
+                  TOP VIEW
+                </div>
+                <MakerJsDrawing 
                   parameters={parameters}
                   view="top"
                   className="w-full transition-all duration-500 ease-out-expo"
                 />
-                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
-                  <div className="text-xs font-medium text-muted-foreground">TOP VIEW</div>
-                  <div className="text-sm font-medium mt-1">
-                    Ø{parameters.diameter} {parameters.unit}
-                  </div>
-                </div>
               </div>
               
               {/* Side View */}
               <div className="relative">
-                <PulleyDrawingArea 
+                <div className="bg-white p-2 rounded-md absolute top-2 left-2 border border-border text-sm font-medium z-10">
+                  SIDE VIEW
+                </div>
+                <MakerJsDrawing 
                   parameters={parameters}
                   view="side"
                   className="w-full transition-all duration-500 ease-out-expo"
                 />
-                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-border rounded-md p-3 shadow-sm text-left">
-                  <div className="text-xs font-medium text-muted-foreground">SIDE VIEW</div>
-                  <div className="text-sm font-medium mt-1">
-                    T: {parameters.thickness} {parameters.unit}
-                  </div>
-                </div>
               </div>
             </div>
             
@@ -598,6 +743,12 @@ const PulleyDesign = () => {
                   <div className="text-xs font-medium text-muted-foreground">BORE DIAMETER</div>
                   <div className="text-sm font-medium mt-1">
                     Ø{parameters.boreDiameter} {parameters.unit}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">INNER DIAMETER</div>
+                  <div className="text-sm font-medium mt-1">
+                    Ø{parameters.innerDiameter} {parameters.unit}
                   </div>
                 </div>
                 <div>
@@ -622,6 +773,12 @@ const PulleyDesign = () => {
                   <div className="text-xs font-medium text-muted-foreground">SCALE</div>
                   <div className="text-sm font-medium mt-1">
                     1:1
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">UNIT</div>
+                  <div className="text-sm font-medium mt-1">
+                    {parameters.unit}
                   </div>
                 </div>
               </div>

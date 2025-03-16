@@ -40,10 +40,6 @@ const IdlerDrawing: React.FC<IdlerDrawingProps> = ({
                 diameter: calculatedParams.idler.outerDiameter,
                 thickness: calculatedParams.idler.length,
                 boreDiameter: calculatedParams.idler.innerDiameter,
-                grooveDepth: 0,
-                grooveWidth: 0,
-                keyWayWidth: calculatedParams.idler.innerDiameter * 0.3,
-                keyWayDepth: calculatedParams.idler.innerDiameter * 0.15,
                 unit: calculatedParams.idler.unit
               }}
               view="top"
@@ -61,10 +57,6 @@ const IdlerDrawing: React.FC<IdlerDrawingProps> = ({
                 diameter: calculatedParams.idler.outerDiameter,
                 thickness: calculatedParams.idler.length,
                 boreDiameter: calculatedParams.idler.innerDiameter,
-                grooveDepth: 0,
-                grooveWidth: 0,
-                keyWayWidth: calculatedParams.idler.innerDiameter * 0.3,
-                keyWayDepth: calculatedParams.idler.innerDiameter * 0.15,
                 unit: calculatedParams.idler.unit
               }}
               view="side"

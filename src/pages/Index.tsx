@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import DrawingArea from "@/components/DrawingArea";
 import ControlPanel from "@/components/ControlPanel";
@@ -82,12 +81,12 @@ const Index = () => {
 
   return (
     <motion.div 
-      className="min-h-screen bg-background py-12 px-4 sm:px-6"
+      className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl w-full">
         <motion.div variants={itemVariants} className="text-center mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
             Production Drawing Generator
@@ -113,11 +112,11 @@ const Index = () => {
           {/* Combine both views in a single container for better exporting */}
           <div 
             ref={drawingRef}
-            className="bg-white rounded-lg shadow-soft border border-border overflow-hidden p-4"
+            className="bg-white rounded-lg shadow-soft border border-border overflow-hidden p-8 max-w-[1400px] mx-auto"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 place-items-center">
               {/* Top View */}
-              <div className="relative">
+              <div className="relative w-full max-w-[600px] flex justify-center">
                 <DrawingArea 
                   dimensions={dimensions} 
                   activeView="top" 
@@ -132,7 +131,7 @@ const Index = () => {
               </div>
               
               {/* Side View */}
-              <div className="relative">
+              <div className="relative w-full max-w-[600px] flex justify-center">
                 <DrawingArea 
                   dimensions={dimensions} 
                   activeView="side" 

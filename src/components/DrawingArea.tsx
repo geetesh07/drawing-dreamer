@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from "react";
 import { 
   DrawingDimensions, 
@@ -83,7 +82,7 @@ const DrawingArea: React.FC<DrawingAreaProps> = ({
     );
     
     // Position drawing in center of container
-    scaled.x = (containerSize.width - scaled.width) / 2;
+    scaled.x = (containerSize.width - scaled.width) / 2 + 40;
     scaled.y = (containerSize.height - scaled.height) / 2;
     
     // Draw based on active view
